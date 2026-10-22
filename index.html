@@ -1,0 +1,2168 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>萌寵排球：網前決戰 (1v1 & 2v2)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800;900&family=Noto+Sans+TC:wght@500;700;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --cat-pink: #f43f5e;
+      --dog-blue: #2563eb;
+      --court-orange: #f97316;
+      --court-wood: #fde68a;
+    }
+    body {
+      font-family: 'M PLUS Rounded 1c', 'Noto Sans TC', sans-serif;
+      background: radial-gradient(circle at top, #fff7ed 0%, #eff6ff 100%);
+      user-select: none;
+      overflow-x: hidden;
+    }
+    .anime-card {
+      transition: all 0.24s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: 0 6px 0 rgba(0,0,0,0.12), 0 10px 15px -3px rgba(0,0,0,0.1);
+    }
+    .anime-card:hover:not(.disabled-card) {
+      transform: translateY(-10px) scale(1.03);
+      box-shadow: 0 14px 0 rgba(0,0,0,0.14), 0 20px 25px -5px rgba(0,0,0,0.15);
+    }
+    .disabled-card {
+      opacity: 0.42;
+      filter: grayscale(0.55);
+      cursor: not-allowed;
+    }
+    .anime-btn {
+      transition: all 0.15s ease;
+      box-shadow: 0 4px 0 rgba(0,0,0,0.22);
+    }
+    .anime-btn:active:not(:disabled) {
+      transform: translateY(3px);
+      box-shadow: 0 1px 0 rgba(0,0,0,0.22);
+    }
+    @keyframes popIn {
+      0% { transform: scale(0.55); opacity: 0; }
+      70% { transform: scale(1.06); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .animate-pop {
+      animation: popIn 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+    @keyframes floatSlow {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-5px); }
+    }
+    .animate-float {
+      animation: floatSlow 2.2s ease-in-out infinite;
+    }
+    .polka-bg {
+      background-image: radial-gradient(#fed7aa 1.5px, transparent 1.5px), radial-gradient(#bfdbfe 1.5px, #ffffff 1.5px);
+      background-size: 28px 28px;
+      background-position: 0 0, 14px 14px;
+    }
+  </style>
+</head>
+<body class="min-h-screen text-slate-800 flex flex-col">
+
+  <!-- 浮動提示訊息框 (取代原生 alert) -->
+  <div id="toast-banner" class="hidden fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 text-amber-300 border-2 border-amber-400 px-5 py-2.5 rounded-2xl shadow-2xl font-black text-xs md:text-sm flex items-center gap-2 animate-pop">
+    <span>🏐</span>
+    <span id="toast-text">提示訊息</span>
+  </div>
+
+  <!-- 頂部導覽與計分板 -->
+  <header class="bg-white/95 backdrop-blur-md border-b-4 border-orange-300 sticky top-0 z-30 px-3 py-2 shadow-sm">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+      <!-- 標題與模式徽章 -->
+      <div class="flex items-center gap-2">
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-orange-500 to-rose-500 flex items-center justify-center text-white font-black text-xl shadow">
+          🏐
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="font-black text-lg md:text-xl tracking-tight text-slate-800">
+              萌寵排球：網前決戰
+            </h1>
+            <span id="header-mode-pill" class="text-xs font-black px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-800 border border-orange-300">
+              1v1 王牌單挑
+            </span>
+          </div>
+          <p class="text-xs text-slate-500 font-medium">肉球喵高校 🐾 vs 柴犬汪高校 🦴（Count 3-2 系統改編）</p>
+        </div>
+      </div>
+
+      <div class="flex items-center bg-slate-900 text-white rounded-2xl px-3 py-1.5 border-2 border-slate-700 shadow-inner text-xs md:text-sm overflow-x-auto">
+        <table class="border-collapse text-center font-bold">
+          <thead>
+            <tr class="text-slate-400 border-b border-slate-700 text-[11px]">
+              <th class="px-2 py-0.5 text-left">TEAM</th>
+              <th class="px-2 py-0.5" id="th-inn-1">SET 1</th>
+              <th class="px-2 py-0.5" id="th-inn-2">SET 2</th>
+              <th class="px-2 py-0.5" id="th-inn-3">SET 3</th>
+              <th class="px-2 py-0.5 hidden" id="th-inn-4">延長</th>
+              <th class="px-2.5 py-0.5 text-amber-400">PTS</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr id="score-row-top" class="border-b border-slate-800">
+              <td class="px-2 py-1 text-left flex items-center gap-1 whitespace-nowrap">
+                <span class="text-[10px] px-1 rounded bg-rose-500 text-white">先發</span>
+                <span>🐱 肉球喵高校</span>
+              </td>
+              <td class="px-2 py-1" id="score-away-1">-</td>
+              <td class="px-2 py-1" id="score-away-2">-</td>
+              <td class="px-2 py-1" id="score-away-3">-</td>
+              <td class="px-2 py-1 hidden" id="score-away-4">-</td>
+              <td class="px-2.5 py-1 text-amber-400 font-black text-base" id="score-away-total">0</td>
+            </tr>
+            <tr id="score-row-bot">
+              <td class="px-2 py-1 text-left flex items-center gap-1 whitespace-nowrap">
+                <span class="text-[10px] px-1 rounded bg-sky-600 text-white">後發</span>
+                <span>🐶 柴犬汪高校</span>
+              </td>
+              <td class="px-2 py-1" id="score-home-1">-</td>
+              <td class="px-2 py-1" id="score-home-2">-</td>
+              <td class="px-2 py-1" id="score-home-3">-</td>
+              <td class="px-2 py-1 hidden" id="score-home-4">-</td>
+              <td class="px-2.5 py-1 text-amber-400 font-black text-base" id="score-home-total">0</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="flex items-center gap-1.5">
+        <button onclick="toggleRefModal()" class="anime-btn bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-xs md:text-sm px-3 py-2 rounded-xl flex items-center gap-1">
+          <span>📋</span> 1v1/2v2規則・判定表
+        </button>
+        <button onclick="openSetupModal()" class="anime-btn bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs md:text-sm px-3 py-2 rounded-xl flex items-center gap-1">
+          <span>🔄</span> 切換模式/重開
+        </button>
+        <button id="sound-btn" onclick="toggleSound()" class="anime-btn bg-amber-400 hover:bg-amber-500 text-slate-900 font-bold text-xs md:text-sm px-2.5 py-2 rounded-xl" title="切換音效">
+          🔊
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-7xl w-full mx-auto p-3 md:p-4 grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+
+    <!-- 左欄：排球場戰術卡 (Volleyball Court) 與 ◇0~◇7 進攻態勢 (占 5 欄) -->
+    <section class="lg:col-span-5 flex flex-col gap-3">
+      <div class="bg-white rounded-3xl p-3 border-4 border-orange-400 shadow-lg relative overflow-hidden">
+        <!-- 頂部局數與攻守狀態 -->
+        <div class="flex items-center justify-between mb-2 px-1">
+          <div class="flex items-center gap-1.5">
+            <span id="inning-badge" class="bg-orange-600 text-white font-black px-3 py-1 rounded-full text-xs md:text-sm shadow">
+              第1局 上半
+            </span>
+            <span id="matchup-badge" class="text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200">
+              攻：🐱 肉球喵 ／ 守：🐶 柴犬汪
+            </span>
+          </div>
+          <div id="runner-code-badge" class="bg-amber-100 border-2 border-amber-400 text-amber-900 font-black text-xs px-2.5 py-1 rounded-xl">
+            ◇0 修正球態勢
+          </div>
+        </div>
+
+        <div class="relative w-full aspect-square max-w-[370px] mx-auto rounded-2xl overflow-hidden border-4 border-orange-700 shadow-inner bg-sky-700">
+          <svg viewBox="0 0 360 360" class="w-full h-full">
+            <!-- 場外藍色地板與木質內場 -->
+            <rect width="360" height="360" fill="#0284c7" />
+            <rect x="36" y="24" width="288" height="312" rx="4" fill="#fb923c" stroke="#ffffff" stroke-width="4" />
+            <rect x="44" y="32" width="272" height="296" fill="#fed7aa" opacity="0.25" />
+
+            <!-- 3米攻擊線 (Attack Lines) -->
+            <line x1="36" y1="108" x2="324" y2="108" stroke="#ffffff" stroke-width="2.5" stroke-dasharray="6 4" />
+            <line x1="36" y1="212" x2="324" y2="212" stroke="#ffffff" stroke-width="2.5" stroke-dasharray="6 4" />
+
+            <!-- 中央球網 (Volleyball Net) -->
+            <rect x="24" y="148" width="312" height="18" fill="#1e293b" opacity="0.25" />
+            <line x1="26" y1="154" x2="334" y2="154" stroke="#ffffff" stroke-width="5" />
+            <line x1="26" y1="154" x2="334" y2="154" stroke="#ef4444" stroke-width="2" stroke-dasharray="8 8" />
+            <!-- 標誌桿 -->
+            <rect x="32" y="142" width="5" height="22" fill="#ef4444" />
+            <rect x="323" y="142" width="5" height="22" fill="#ef4444" />
+
+            <!-- 進攻方三大戰術推進踏板 (對應原版 一壘①、二壘②、三壘③) -->
+            <!-- ② 二傳舉球核心區 (對應二壘 2B - 中前網前) -->
+            <g id="zone-2b" transform="translate(180, 195)">
+              <circle r="24" fill="#fef3c7" stroke="#f59e0b" stroke-width="3" stroke-dasharray="4 2" />
+              <text x="0" y="34" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="900">②二傳組織</text>
+            </g>
+            <!-- ① 後排一傳到位區 (對應一壘 1B - 右後防區) -->
+            <g id="zone-1b" transform="translate(274, 255)">
+              <circle r="24" fill="#fef3c7" stroke="#f59e0b" stroke-width="3" stroke-dasharray="4 2" />
+              <text x="0" y="34" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="900">①一傳到位</text>
+            </g>
+            <!-- ③ 網前快攻誘餌區 (對應三壘 3B - 左前扣殺區) -->
+            <g id="zone-3b" transform="translate(86, 195)">
+              <circle r="24" fill="#fef3c7" stroke="#f59e0b" stroke-width="3" stroke-dasharray="4 2" />
+              <text x="0" y="34" text-anchor="middle" fill="#ffffff" font-size="10" font-weight="900">③快攻誘餌</text>
+            </g>
+
+            <!-- 球場標語 -->
+            <text x="180" y="48" text-anchor="middle" fill="#ffffff" opacity="0.9" font-size="13" font-weight="900">
+              ★ ヌイグルミ排球・DEFENSE SIDE ★
+            </text>
+          </svg>
+
+          <!-- 防守方：前排攔網手 (1v1 & 2v2 皆顯示) -->
+          <div id="field-blocker-avatar" class="absolute left-1/2 top-[28%] -translate-x-1/2 -translate-y-1/2 w-14 h-14 pointer-events-none transition-all duration-300"></div>
+          <!-- 防守方：後排自由球員 (2v2 雙打專屬顯示) -->
+          <div id="field-libero-avatar" class="hidden absolute left-[28%] top-[16%] -translate-x-1/2 -translate-y-1/2 w-12 h-12 pointer-events-none transition-all duration-300"></div>
+
+          <!-- 進攻方：主攻扣球手 (1v1 & 2v2 皆顯示) -->
+          <div id="field-spiker-avatar" class="absolute left-[54%] bottom-[8%] -translate-x-1/2 w-14 h-14 pointer-events-none transition-all duration-300"></div>
+          <!-- 進攻方：二傳舉球員 (2v2 雙打專屬顯示) -->
+          <div id="field-setter-avatar" class="hidden absolute left-[35%] bottom-[12%] -translate-x-1/2 w-12 h-12 pointer-events-none transition-all duration-300"></div>
+
+          <!-- 場上進攻推進標記 (①一傳、②二傳、③快攻誘餌) -->
+          <div id="runner-1b" class="hidden absolute right-[16%] top-[63%] -translate-y-1/2 w-14 h-14 animate-float pointer-events-none"></div>
+          <div id="runner-2b" class="hidden absolute left-1/2 top-[46%] -translate-x-1/2 w-14 h-14 animate-float pointer-events-none"></div>
+          <div id="runner-3b" class="hidden absolute left-[16%] top-[46%] -translate-y-1/2 w-14 h-14 animate-float pointer-events-none"></div>
+
+          <!-- 左下角 RALLY & OUT 燈號面板 -->
+          <div class="absolute left-2.5 bottom-2.5 bg-slate-900/95 text-white px-3 py-2 rounded-2xl border-2 border-slate-600 shadow-lg">
+            <div class="text-[10px] font-black text-amber-300 mb-1 tracking-wider">LAST RALLY (3-2)</div>
+            <div class="flex items-center gap-1.5 text-xs font-black">
+              <span class="text-rose-400">失誤 OUT</span>
+              <span id="out-light-1" class="w-3.5 h-3.5 rounded-full bg-slate-700 border border-slate-500"></span>
+              <span id="out-light-2" class="w-3.5 h-3.5 rounded-full bg-slate-700 border border-slate-500"></span>
+            </div>
+          </div>
+
+          <!-- 右下角山札剩餘提示 -->
+          <div class="absolute right-2.5 bottom-2.5 bg-white/95 backdrop-blur px-2.5 py-1.5 rounded-xl border-2 border-orange-500 text-[11px] font-bold text-slate-700 shadow">
+            <div>🛡️ 防守山札：<span id="pitcher-deck-count" class="text-sky-600 font-black">12</span> 張</div>
+            <div>🏐 進攻山札：<span id="batter-deck-count" class="text-rose-600 font-black">12</span> 張</div>
+          </div>
+        </div>
+
+        <div class="mt-2.5 bg-orange-50 border-2 border-orange-200 rounded-2xl p-2.5 text-xs text-orange-950">
+          <div class="font-black text-orange-800 flex items-center gap-1 mb-0.5">
+            <span>📌</span> 當前陣型（<span id="rule-hint-title">◇0 修正球態勢</span>）排球推進要點：
+          </div>
+          <p id="rule-hint-body" class="text-slate-700 leading-relaxed font-medium">
+            此時若進攻方打出「時間差偷襲卡（原盜壘）」，效果等同於「觀察空檔軟吊（原選球）」。
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="lg:col-span-7 flex flex-col gap-3">
+
+      <!-- 對決開牌舞台 (Battle Stage) -->
+      <div class="bg-white rounded-3xl p-4 border-4 border-orange-300 shadow-lg polka-bg relative">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div class="flex items-center gap-2">
+            <span id="stage-mode-badge" class="bg-gradient-to-r from-orange-500 to-rose-500 text-white text-xs font-black px-3 py-1 rounded-full shadow">
+              網前決戰舞台
+            </span>
+            <span id="turn-instruction" class="text-sm font-black text-slate-800">
+              請選擇手牌進行網前對決！
+            </span>
+          </div>
+          <span id="hand-round-info" class="text-xs font-bold text-slate-500 bg-white/90 px-2.5 py-1 rounded-full border border-slate-200">
+            本輪手牌剩餘：5 張
+          </span>
+        </div>
+
+        <!-- 2v2 雙打搭檔加成狀態列 (僅在 2v2 模式顯示) -->
+        <div id="synergy-status-bar" class="hidden mb-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div class="bg-sky-50 border-2 border-sky-300 rounded-2xl px-3 py-1.5 flex items-center justify-between text-xs">
+            <span class="font-black text-sky-800">🧤 自由球員協防：</span>
+            <span id="def-synergy-text" class="font-bold text-sky-600">等待自由球員出牌...</span>
+          </div>
+          <div class="bg-rose-50 border-2 border-rose-300 rounded-2xl px-3 py-1.5 flex items-center justify-between text-xs">
+            <span class="font-black text-rose-800">✨ 舉球員配球：</span>
+            <span id="off-synergy-text" class="font-bold text-rose-600">等待舉球員配球...</span>
+          </div>
+        </div>
+
+        <!-- 雙方出牌卡槽與判定結果 -->
+        <div class="grid grid-cols-1 md:grid-cols-11 gap-3 items-center my-1">
+          <!-- 防守方：攔網出牌槽 -->
+          <div class="md:col-span-4 flex flex-col items-center">
+            <div class="text-xs font-black text-sky-700 bg-sky-100 px-3 py-0.5 rounded-full mb-1.5 border border-sky-300" id="stage-pitcher-label">
+              防守方：攔網＆接球卡
+            </div>
+            <div id="slot-pitcher-card" class="w-40 h-56 rounded-2xl border-4 border-dashed border-sky-300 bg-sky-50/70 flex flex-col items-center justify-center p-2 text-center shadow-inner">
+              <span class="text-3xl mb-1 opacity-40">🛡️</span>
+              <span class="text-xs font-bold text-sky-700/60">等待防守方出牌</span>
+            </div>
+          </div>
+
+          <div class="md:col-span-3 flex flex-col items-center justify-center text-center px-1">
+            <div id="versus-badge" class="w-12 h-12 rounded-2xl bg-amber-400 text-slate-900 font-black text-lg flex items-center justify-center shadow-md border-2 border-white mb-2">
+              VS
+            </div>
+            <div id="formula-box" class="hidden bg-slate-900 text-amber-300 font-black text-xs px-3 py-1.5 rounded-xl mb-1.5 shadow">
+              快攻攔網 1 × 扣殺 6 ＝ 6
+            </div>
+            <div id="result-banner" class="min-h-[64px] flex flex-col items-center justify-center bg-white/95 border-2 border-orange-200 rounded-2xl px-3 py-2 w-full shadow-sm">
+              <span class="text-xs font-bold text-slate-400">雙方蓋牌後同時翻開判定</span>
+            </div>
+          </div>
+
+          <!-- 進攻方：扣殺出牌槽 -->
+          <div class="md:col-span-4 flex flex-col items-center">
+            <div class="text-xs font-black text-rose-700 bg-rose-100 px-3 py-0.5 rounded-full mb-1.5 border border-rose-300" id="stage-batter-label">
+              進攻方：舉球＆扣殺卡
+            </div>
+            <div id="slot-batter-card" class="w-40 h-56 rounded-2xl border-4 border-dashed border-rose-300 bg-rose-50/70 flex flex-col items-center justify-center p-2 text-center shadow-inner">
+              <span class="text-3xl mb-1 opacity-40">🏐</span>
+              <span class="text-xs font-bold text-rose-700/60">等待進攻方出牌</span>
+            </div>
+          </div>
+        </div>
+
+        <div id="defense-choice-panel" class="hidden mt-3 bg-amber-50 border-4 border-amber-400 rounded-2xl p-3 text-center animate-pop">
+          <div class="font-black text-amber-900 text-sm mb-1">
+            ⚡ 防守方戰術抉擇（無失誤且 ①、③ 號位就位 ◇5 救起扣球）！
+          </div>
+          <p class="text-xs text-amber-800 mb-2.5">
+            根據說明書規則，防守方可選擇「連續封鎖抓雙殺（讓對手得1分）」，或「死守網前抓出局（0失分）」：
+          </p>
+          <div class="flex flex-wrap justify-center gap-3">
+            <button onclick="resolveDefenseChoice('dp')" class="anime-btn bg-sky-600 hover:bg-sky-700 text-white font-black text-xs px-4 py-2 rounded-xl">
+              ✌ 抓雙殺 W Play（2失誤無標記 ◇0，對手得 1 分）
+            </button>
+            <button onclick="resolveDefenseChoice('home')" class="anime-btn bg-rose-600 hover:bg-rose-700 text-white font-black text-xs px-4 py-2 rounded-xl">
+              🛡️ 死守網前抓第3區出局（1失誤 ①②就位 ◇4，對手 0 分）
+            </button>
+          </div>
+        </div>
+
+        <!-- 實況轉播紀錄條 -->
+        <div class="mt-3 bg-slate-900 text-white rounded-2xl px-3.5 py-2 flex items-center justify-between gap-2 border-2 border-slate-700">
+          <div class="flex items-center gap-2 overflow-hidden">
+            <span class="text-amber-400 font-black text-xs shrink-0">🎙️ 實況：</span>
+            <p id="live-commentary" class="text-xs md:text-sm font-bold text-slate-100 truncate">
+              比賽開始！選擇 1v1 王牌單挑或 2v2 雙打搭檔展開熱血排球對決！
+            </p>
+          </div>
+          <button id="next-step-btn" onclick="handleNextAction()" class="hidden anime-btn bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs px-4 py-1.5 rounded-xl shrink-0">
+            下一球 ▶
+          </button>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-3xl p-4 border-4 border-indigo-200 shadow-lg">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div class="flex items-center gap-2">
+            <span id="active-hand-badge" class="bg-rose-500 text-white text-xs font-black px-3 py-1 rounded-full">
+              🏐 進攻手牌
+            </span>
+            <h2 id="active-hand-title" class="font-black text-sm md:text-base text-slate-800">
+              請點選 1 張卡牌出牌
+            </h2>
+          </div>
+          <span id="deck-replenish-hint" class="text-xs font-bold text-slate-500">
+            ※ 同局內 5 張手牌用完時，雙方同時抽滿 5 張新卡
+          </span>
+        </div>
+
+        <!-- 多人同機遮罩 (Pass & Play 防止偷看) -->
+        <div id="pass-play-shield" class="hidden py-10 bg-gradient-to-br from-indigo-50 to-orange-50 rounded-2xl border-2 border-dashed border-indigo-300 text-center">
+          <div class="text-4xl mb-2">🙈</div>
+          <h3 id="shield-title" class="font-black text-base text-slate-800 mb-1">請將畫面交給下一位玩家</h3>
+          <p class="text-xs text-slate-500 mb-4">確認對手沒有看到螢幕後，點擊下方按鈕顯示手牌</p>
+          <button onclick="unlockHandView()" class="anime-btn bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm px-6 py-2.5 rounded-2xl">
+            👁️ 顯示我的手牌
+          </button>
+        </div>
+
+        <!-- 卡牌列表容器 -->
+        <div id="hand-cards-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 py-2">
+          <!-- 由 JS 動態渲染手牌 -->
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <div id="ref-modal" class="hidden fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-3">
+    <div class="bg-white rounded-3xl max-w-5xl w-full max-h-[90vh] flex flex-col border-4 border-indigo-400 shadow-2xl overflow-hidden animate-pop">
+      <div class="bg-indigo-600 text-white px-5 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">📋</span>
+          <h3 class="font-black text-base md:text-lg">《萌寵排球：網前決戰》1v1 ＆ 2v2 模式規則與結果表</h3>
+        </div>
+        <button onclick="toggleRefModal()" class="bg-indigo-800 hover:bg-indigo-900 text-white font-black px-3 py-1 rounded-xl text-sm">
+          ✕ 關閉
+        </button>
+      </div>
+
+      <div class="p-4 overflow-y-auto space-y-4 text-xs md:text-sm">
+        <!-- 1v1 與 2v2 模式差異說明 -->
+        <div class="bg-gradient-to-r from-orange-50 to-amber-50 border-2 border-orange-300 rounded-2xl p-3.5">
+          <h4 class="font-black text-orange-900 text-sm mb-2">🔥 1對1 王牌單挑 vs 2對2 雙打搭檔 玩法說明</h4>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+            <div class="bg-white p-3 rounded-xl border border-orange-200">
+              <div class="font-black text-rose-700 text-sm mb-1">⚡ 1對1 王牌單挑模式（原版核心）</div>
+              <p class="text-slate-700 leading-relaxed">
+                • <b>1名防守方（攔網） vs 1名進攻方（扣殺）</b>。<br>
+                • 雙方各抽 5 張手牌，每球各出 1 張牌正面交鋒，5 張全部打完後同時從 17 張牌庫頂補滿 5 張。<br>
+                • 完全對應原版《カウントスリーツー》數學機率與心理博弈！
+              </p>
+            </div>
+            <div class="bg-white p-3 rounded-xl border border-indigo-200">
+              <div class="font-black text-indigo-700 text-sm mb-1">🤝 2對2 雙打搭檔模式（職位分工聯手）</div>
+              <p class="text-slate-700 leading-relaxed">
+                • <b>進攻雙人組（舉球員 Setter ＋ 主攻手 Spiker）</b> vs <b>防守雙人組（自由球員 Libero ＋ 攔網手 Blocker）</b>。<br>
+                • 每球先由<b>後排自由球員＆舉球員</b>打出「配球／協防支援卡」，再由<b>攔網手＆主攻手</b>打出「主戰決勝卡」：<br>
+                &nbsp;&nbsp;① <b>舉球配快攻卡</b>：獲得【速攻托球】➔ 安打時額外多推進 1 格！<br>
+                &nbsp;&nbsp;② <b>舉球配長攻卡</b>：獲得【高吊修正】➔ 主攻手長攻倍率 +1（最高×6）！<br>
+                &nbsp;&nbsp;③ <b>舉球配觀察軟吊</b>：獲得【視野掩護】➔ 主攻手遇退守陷阱不會扣球出界，改為吊球保送！<br>
+                &nbsp;&nbsp;④ <b>自由球員配退守卡</b>：獲得【完美飛撲 Dig】➔ 擦網球(5)直接救起抓出局！<br>
+                &nbsp;&nbsp;⑤ <b>自由球員配同向攔網</b>：獲得【雙人合攏攔網】➔ 攔網數值 -1（威力更強）！
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="bg-rose-50/70 border-2 border-rose-200 rounded-2xl p-3.5">
+            <h4 class="font-black text-rose-800 text-sm mb-2 flex items-center justify-between">
+              <span>🎯 貼網攔網 × 強攻扣殺 ＝ 乘積結果表</span>
+              <span class="text-[11px] bg-white px-2 py-0.5 rounded-full border border-rose-200">攔網數值 × 扣殺數值</span>
+            </h4>
+            <div class="grid grid-cols-2 gap-x-3 gap-y-1 text-xs font-bold">
+              <div><span class="text-slate-500">0：</span>鐵壁攔死 Stuff Block（出局）</div>
+              <div><span class="text-emerald-700">[0×0]：</span>攔網猜錯邊（推進1格）</div>
+              <div><span class="text-slate-600">1：</span>攔網觸球 One-Touch（重打）</div>
+              <div><span class="text-slate-700">2：</span>自由球員救起（可雙殺/推進）</div>
+              <div><span class="text-slate-700">3：</span>前排接起反擊（可雙殺/推進）</div>
+              <div><span class="text-slate-700">4：</span>托球過高被抓出局</div>
+              <div class="text-rose-600">⑤：幸運擦網球落地（推進1格）</div>
+              <div><span class="text-slate-700">6：</span>正面攔回（同步/奇襲雙殺）</div>
+              <div class="text-rose-600">⑧：心臟地帶巧妙吊球（推進1格）</div>
+              <div><span class="text-indigo-700">9：</span>高打點平推（③號位打手出界得分）</div>
+              <div class="text-rose-600">⑩：邊線直線突破扣殺（安打）</div>
+              <div class="text-rose-600">⑫：中央穿越突破扣殺（安打）</div>
+              <div class="text-rose-600">⑮：大斜線突破扣殺（安打）</div>
+              <div><span class="text-indigo-700">16：</span>邊線擦手高遠球（②③號位推進）</div>
+              <div class="text-sky-600">⑱：右翼壓線強扣（二壘級推進）</div>
+              <div class="text-sky-600">⑳：左翼壓線強扣（二壘級推進）</div>
+              <div class="text-sky-600">㉔：撕裂防線爆裂斜線（①號位也得分）</div>
+              <div class="text-emerald-600">㉕：後排飛翔重扣（清台直上③號位）</div>
+              <div class="text-purple-600">㉚：釘地板垂直必殺扣殺（全得分）</div>
+              <div class="text-purple-600">㊱：彈上看台王牌神扣殺（全得分）</div>
+            </div>
+          </div>
+
+          <div class="bg-emerald-50/70 border-2 border-emerald-200 rounded-2xl p-3.5">
+            <h4 class="font-black text-emerald-800 text-sm mb-2">
+              🏃 戰術標記與失誤數之推進表（◇0 ～ ◇7）
+            </h4>
+            <ul class="space-y-1.5 text-xs font-bold text-slate-700">
+              <li><span class="text-emerald-700 font-black">◇0 無標記：</span>此時「時間差偷襲卡」視為「觀察空檔軟吊」效果。</li>
+              <li><span class="text-emerald-700 font-black">◇1 ①一傳到位：</span>2・3連續封鎖雙殺；二失誤時全員起跑；24直接得分。</li>
+              <li><span class="text-emerald-700 font-black">◇2 ②二傳就位：</span>2推進至③；16擦手推進至③；二失誤突破扣殺直接得分。</li>
+              <li><span class="text-emerald-700 font-black">◇3 ③誘餌就位：</span>9・16 藉打手出界（Tag up）直接攻下 1 分。</li>
+              <li><span class="text-emerald-700 font-black">◇4 ①②就位：</span>2・3雙殺（無失誤時變二失誤◇3）；16變◇5。</li>
+              <li><span class="text-emerald-700 font-black">◇5 ①③就位：</span>無失誤2・3時防守方選「抓雙殺失1分」或「封鎖第3區變一失誤◇4」。</li>
+              <li><span class="text-emerald-700 font-black">◇6 ②③就位：</span>9打手出界得分變◇2；16得分且②上③變◇3。</li>
+              <li><span class="text-emerald-700 font-black">◇7 全員同步助跑：</span>無失誤2・3雙殺變二失誤◇6；打手出界9變◇4、16變◇5。</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="setup-modal" class="fixed inset-0 z-50 bg-slate-900/75 backdrop-blur-sm flex items-center justify-center p-3">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 border-4 border-orange-400 shadow-2xl text-center animate-pop">
+      <div class="flex justify-center gap-3 mb-2">
+        <div class="w-16 h-16" id="modal-cat-icon"></div>
+        <div class="w-16 h-16" id="modal-dog-icon"></div>
+      </div>
+      <h2 id="setup-modal-title" class="font-black text-2xl text-slate-800 mb-1">
+        萌寵排球：網前決戰
+      </h2>
+      <p id="setup-modal-subtitle" class="text-xs font-bold text-slate-500 mb-4">
+        支援「1對1 王牌單挑」與「2對2 雙打搭檔（舉球×扣殺 vs 攔網×自由）」
+      </p>
+
+      <!-- 模式與賽制選擇 -->
+      <div class="space-y-3 text-left mb-5">
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1.5">🏐 1. 選擇排球對戰編制（1對1 或 2對2）：</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button id="format-1v1-btn" onclick="selectFormat('1v1')" class="p-3 rounded-2xl border-2 border-orange-500 bg-orange-50 text-orange-950 font-black text-xs text-left">
+              <div class="text-sm mb-0.5">⚡ 1對1 王牌單挑</div>
+              <div class="text-[11px] font-bold text-orange-700/80">經典 1張對1張 網前直球對決</div>
+            </button>
+            <button id="format-2v2-btn" onclick="selectFormat('2v2')" class="p-3 rounded-2xl border-2 border-slate-200 bg-white text-slate-600 font-black text-xs text-left">
+              <div class="text-sm mb-0.5">🤝 2對2 雙打搭檔</div>
+              <div class="text-[11px] font-bold text-slate-400">舉球配球＋主攻 vs 自由協防＋攔網</div>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-black text-slate-700 mb-1.5">🎮 2. 選擇遊玩人數模式：</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button id="mode-1p-btn" onclick="selectMode('1p')" class="p-2.5 rounded-2xl border-2 border-pink-500 bg-pink-50 text-pink-900 font-black text-xs text-center">
+              🤖 單人挑戰 AI（含雙打指揮）
+            </button>
+            <button id="mode-2p-btn" onclick="selectMode('2p')" class="p-2.5 rounded-2xl border-2 border-slate-200 bg-white text-slate-600 font-black text-xs text-center">
+              👫 同機對戰（1v1雙人／2v2四人）
+            </button>
+          </div>
+        </div>
+
+        <div id="team-select-group">
+          <label class="block text-xs font-black text-slate-700 mb-1.5">🐾 3. 選擇你的代表隊伍：</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button id="team-cat-btn" onclick="selectPlayerTeam('cat')" class="p-2.5 rounded-2xl border-2 border-amber-500 bg-amber-50 text-amber-900 font-black text-xs text-center">
+              🐱 肉球喵高校（先攻）
+            </button>
+            <button id="team-dog-btn" onclick="selectPlayerTeam('dog')" class="p-2.5 rounded-2xl border-2 border-slate-200 bg-white text-slate-600 font-black text-xs text-center">
+              🐶 柴犬汪高校（後攻）
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 平手延長賽按鈕區 (預設隱藏) -->
+      <div id="tie-breaker-actions" class="hidden flex gap-2 mb-3">
+        <button onclick="startExtraInning()" class="flex-1 anime-btn bg-amber-400 hover:bg-amber-500 text-slate-900 font-black py-3 rounded-2xl text-sm">
+          🔥 進行延長局（第4局）
+        </button>
+        <button onclick="declareDraw()" class="flex-1 anime-btn bg-slate-600 hover:bg-slate-700 text-white font-black py-3 rounded-2xl text-sm">
+          🤝 握手言和（和局）
+        </button>
+      </div>
+
+      <button onclick="startNewGame()" class="w-full anime-btn bg-gradient-to-r from-orange-500 to-rose-500 hover:from-orange-600 hover:to-rose-600 text-white font-black py-3 rounded-2xl text-base shadow-lg">
+        🏐 發球開戰！START GAME
+      </button>
+    </div>
+  </div>
+
+  <script>
+    function getChibiSvg(species, pose = 'normal', roleTag = '') {
+      const isCat = species === 'cat';
+      const furMain = isCat ? '#fff5eb' : '#f6ad55';
+      const furPatch = isCat ? '#fda4af' : '#fffaf0';
+      const jerseyColor = isCat ? '#e11d48' : '#2563eb';
+      const earInner = '#fda4af';
+
+      const ears = isCat
+        ? `<polygon points="18,34 10,10 34,22" fill="${furMain}" stroke="#475569" stroke-width="2.5" stroke-linejoin="round"/>
+           <polygon points="18,30 14,15 30,22" fill="${earInner}"/>
+           <polygon points="62,34 70,10 46,22" fill="${furMain}" stroke="#475569" stroke-width="2.5" stroke-linejoin="round"/>
+           <polygon points="62,30 66,15 50,22" fill="${earInner}"/>`
+        : `<ellipse cx="16" cy="24" rx="9" ry="15" transform="rotate(-20 16 24)" fill="#dd6b20" stroke="#475569" stroke-width="2.5"/>
+           <ellipse cx="64" cy="24" rx="9" ry="15" transform="rotate(20 64 24)" fill="#dd6b20" stroke="#475569" stroke-width="2.5"/>`;
+
+      let eyes = `
+        <circle cx="28" cy="42" r="5.5" fill="#1e293b"/>
+        <circle cx="26.5" cy="40" r="2.2" fill="#ffffff"/>
+        <circle cx="52" cy="42" r="5.5" fill="#1e293b"/>
+        <circle cx="50.5" cy="40" r="2.2" fill="#ffffff"/>
+      `;
+      if (pose === 'power' || pose === 'fastball') {
+        eyes = `
+          <circle cx="28" cy="42" r="5.5" fill="#1e293b"/>
+          <polygon points="22,35 35,39 22,39" fill="${furMain}"/>
+          <circle cx="26.5" cy="40.5" r="2" fill="#ffffff"/>
+          <circle cx="52" cy="42" r="5.5" fill="#1e293b"/>
+          <polygon points="58,35 45,39 58,39" fill="${furMain}"/>
+          <circle cx="50.5" cy="40.5" r="2" fill="#ffffff"/>
+        `;
+      } else if (pose === 'take' || pose === 'ball') {
+        eyes = `
+          <path d="M 23 42 Q 28 37 33 42" fill="none" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
+          <path d="M 47 42 Q 52 37 57 42" fill="none" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
+        `;
+      }
+
+      // 排球專屬動作道具（攔網雙手、扣殺排球、托球光環、疾風殘影）
+      let prop = '';
+      if (pose === 'fastball') {
+        // 攔網高舉雙爪
+        prop = `<rect x="10" y="18" width="9" height="22" rx="4.5" fill="${furMain}" stroke="#475569" stroke-width="2"/>
+                <rect x="61" y="18" width="9" height="22" rx="4.5" fill="${furMain}" stroke="#475569" stroke-width="2"/>`;
+      } else if (pose === 'breaking') {
+        prop = `<circle cx="16" cy="58" r="9" fill="#38bdf8" opacity="0.3"/>
+                <circle cx="16" cy="58" r="7" fill="#fde047" stroke="#2563eb" stroke-width="2"/>`;
+      } else if (pose === 'power') {
+        // 重扣火焰排球
+        prop = `<circle cx="63" cy="26" r="11" fill="#f97316" opacity="0.35"/>
+                <circle cx="63" cy="26" r="8" fill="#fde047" stroke="#2563eb" stroke-width="2"/>
+                <path d="M 57 24 Q 63 30 69 24" fill="none" stroke="#ef4444" stroke-width="2"/>`;
+      } else if (pose === 'bunt') {
+        // 舉球員托球手勢
+        prop = `<circle cx="40" cy="12" r="8" fill="#fde047" stroke="#f59e0b" stroke-width="2"/>`;
+      } else if (pose === 'steal') {
+        prop = `<text x="58" y="68" font-size="14">⚡</text>`;
+      }
+
+      const badgeOverlay = roleTag
+        ? `<rect x="18" y="62" width="44" height="14" rx="5" fill="#0f172a" opacity="0.88"/>
+           <text x="40" y="72" text-anchor="middle" fill="#facc15" font-size="8.5" font-weight="900">${roleTag}</text>`
+        : '';
+
+      return `
+        <svg viewBox="0 0 80 80" class="w-full h-full drop-shadow-sm">
+          ${ears}
+          <path d="M 22 55 Q 40 51 58 55 L 62 76 L 18 76 Z" fill="${jerseyColor}" stroke="#475569" stroke-width="2.5"/>
+          <path d="M 33 55 L 40 65 L 47 55" fill="#ffffff"/>
+          <circle cx="40" cy="41" r="22" fill="${furMain}" stroke="#475569" stroke-width="2.5"/>
+          ${!isCat ? `<ellipse cx="40" cy="46" rx="12" ry="9" fill="${furPatch}"/>` : ''}
+          <!-- 運動頭帶 -->
+          <path d="M 19 31 Q 40 26 61 31" fill="none" stroke="${jerseyColor}" stroke-width="5" stroke-linecap="round"/>
+          <ellipse cx="21" cy="47" rx="4.5" ry="2.5" fill="#fb7185" opacity="0.65"/>
+          <ellipse cx="59" cy="47" rx="4.5" ry="2.5" fill="#fb7185" opacity="0.65"/>
+          ${eyes}
+          <polygon points="38,45 42,45 40,48" fill="${isCat ? '#fb7185' : '#1e293b'}"/>
+          <path d="M 35 50 Q 37.5 53 40 50 Q 42.5 53 45 50" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round"/>
+          ${prop}
+          ${badgeOverlay}
+        </svg>
+      `;
+    }
+
+    const PITCHER_DECK_TEMPLATE = [
+      // 中央快攻攔網 6 張 (對應原直球 1~6，數字越小攔網越嚴密)
+      { id: 'P1', category: 'strike', pitchType: 'straight', val: 1, title: '鐵壁三人快攻封鎖', speed: '快攻攔網 1', desc: '完全預判中央快攻路線', pose: 'fastball' },
+      { id: 'P2', category: 'strike', pitchType: 'straight', val: 2, title: '雙人高壓貼網攔截', speed: '快攻攔網 2', desc: '封死快攻手出手角度', pose: 'fastball' },
+      { id: 'P3', category: 'strike', pitchType: 'straight', val: 3, title: '副攻手正面封網', speed: '快攻攔網 3', desc: '標準中央快攻攔網', pose: 'fastball' },
+      { id: 'P4', category: 'strike', pitchType: 'straight', val: 4, title: '跟進式快攻攔網', speed: '快攻攔網 4', desc: '穩健守住網前中路', pose: 'fastball' },
+      { id: 'P5', category: 'strike', pitchType: 'straight', val: 5, title: '單人起跳快攻干擾', speed: '快攻攔網 5', desc: '勉強趕上快攻節奏', pose: 'fastball' },
+      { id: 'P6', category: 'strike', pitchType: 'straight', val: 6, title: '中央攔網出現縫隙', speed: '快攻攔網 6', desc: '小心被快攻手直線釘地板', pose: 'fastball' },
+      // 兩翼長攻攔網 4 張 (對應原變化球 0, 1, 2, 4)
+      { id: 'P7', category: 'strike', pitchType: 'breaking', val: 0, title: '終極雙人封死邊線', speed: '長攻攔網 0', desc: '強扣皆被攔死(0×0為空網推進)', pose: 'breaking' },
+      { id: 'P8', category: 'strike', pitchType: 'breaking', val: 1, title: '完美斜線封鎖攔網', speed: '長攻攔網 1', desc: '精準抓到王牌長攻時間點', pose: 'breaking' },
+      { id: 'P9', category: 'strike', pitchType: 'breaking', val: 2, title: '延遲起跳長攻攔網', speed: '長攻攔網 2', desc: '專門克制時間差與大砲', pose: 'breaking' },
+      { id: 'P10', category: 'strike', pitchType: 'breaking', val: 4, title: '單人邊線勉強攔網', speed: '長攻攔網 4', desc: '攔網手被假動作拉開', pose: 'breaking' },
+      // 後排退守布陣 5 張 (對應原壞球 5 張)
+      { id: 'P11', category: 'ball', title: '放空網引誘扣球出界', speed: '退守陷阱', desc: '對手強扣將直接出界失誤', pose: 'ball' },
+      { id: 'P12', category: 'ball', title: '自由球員深蹲待命', speed: '退守陷阱', desc: '引誘對手重扣自爆出界', pose: 'ball' },
+      { id: 'P13', category: 'ball', title: '後排三人弧形退守', speed: '退守陷阱', desc: '若對手改用軟吊則會落地推進', pose: 'ball' },
+      { id: 'P14', category: 'ball', title: '邊線收手引誘出界', speed: '退守陷阱', desc: '臨時縮手讓強扣飛出底線', pose: 'ball' },
+      { id: 'P15', category: 'ball', title: '後場極限防守布陣', speed: '退守陷阱', desc: '賭進攻方不敢輕吊網前', pose: 'ball' },
+      // 假跳牽制 1 張 ＆ 觸網犯規 1 張
+      { id: 'P16', category: 'pickoff', title: '眼神與假跳牽制', speed: '識破奇襲', desc: '直接抓時間差與同步進攻出局', pose: 'normal' },
+      { id: 'P17', category: 'balk', title: '攔網觸網犯規', speed: 'ネットタッチ', desc: '全場戰術標記免費推進 1 格', pose: 'take' }
+    ];
+
+    const BATTER_DECK_TEMPLATE = [
+      // 強攻扣殺 8 張 (對應原打つ 8張)
+      { id: 'B1', category: 'swing', sMult: 6, bMult: 0, title: '光速怪人快攻', sub: '超速攻強打', desc: '快攻×6 ／ 長攻×0', pose: 'power' },
+      { id: 'B2', category: 'swing', sMult: 0, bMult: 6, title: '王牌大砲重扣', sub: 'オープン強打', desc: '快攻×0 ／ 長攻×6', pose: 'power' },
+      { id: 'B3', category: 'swing', sMult: 5, bMult: 1, title: 'A快攻銳角突擊', sub: 'Aクイック', desc: '快攻×5 ／ 長攻×1', pose: 'power' },
+      { id: 'B4', category: 'swing', sMult: 1, bMult: 5, title: '平行長攻強襲', sub: '平行トス強打', desc: '快攻×1 ／ 長攻×5', pose: 'power' },
+      { id: 'B5', category: 'swing', sMult: 4, bMult: 2, title: 'C快攻直線突破', sub: 'Cクイック', desc: '快攻×4 ／ 長攻×2', pose: 'power' },
+      { id: 'B6', category: 'swing', sMult: 2, bMult: 4, title: '小斜線犀利切擊', sub: 'クロス打ち', desc: '快攻×2 ／ 長攻×4', pose: 'power' },
+      { id: 'B7', category: 'swing', sMult: 3, bMult: 3, title: '全能王牌自由扣殺', sub: '全方位アタック', desc: '快攻×3 ／ 長攻×3', pose: 'power' },
+      { id: 'B8', category: 'swing', sMult: 3, bMult: 2, title: '看穿攔網技巧撥球', sub: 'ブロックアウト狙い', desc: '快攻×3 ／ 長攻×2', pose: 'power' },
+      // 觀察軟吊 5 張 (對應原見送り 5張)
+      { id: 'B9', category: 'take', title: '冷靜觀察空檔軟吊', sub: 'フェイント', desc: '退守則落地推進／貼網則被壓死', pose: 'take' },
+      { id: 'B10', category: 'take', title: '越過指尖高弧度軟吊', sub: 'フェイント', desc: '專門克制後排退守陷阱', pose: 'take' },
+      { id: 'B11', category: 'take', title: '假扣真吊落點控制', sub: 'フェイント', desc: '對手退守即推進／對手貼網即失誤', pose: 'take' },
+      { id: 'B12', category: 'take', title: '網前無人區輕推', sub: 'フェイント', desc: '看穿退守陷阱穩穩推進標記', pose: 'take' },
+      { id: 'B13', category: 'take', title: '極限收力心臟吊球', sub: 'フェイント', desc: '與攔網手的心理博弈', pose: 'take' },
+      // 舉球員二次吊球 2 張、時間差偷襲 1 張、全隊同步進攻 1 張
+      { id: 'B14', category: 'bunt', title: '舉球員二次吊球奇襲', sub: 'ツーアタック (×1)', desc: '推進標記／③就位時強迫取分', pose: 'bunt' },
+      { id: 'B15', category: 'bunt', title: '二傳假托單手吊球', sub: 'ツーアタック (×1)', desc: '數值5擦網安打／2・3推進或搶分', pose: 'bunt' },
+      { id: 'B16', category: 'steal', title: '背後時間差偷襲', sub: 'ブロード攻撃', desc: '攔網時掩護推進／◇3・6・7限第5張出', pose: 'steal' },
+      { id: 'B17', category: 'hitrun', title: '全員同步多點進攻', sub: 'シンクロ攻撃 (×2)', desc: '數值×2判定／突破扣殺推進2格', pose: 'steal' }
+    ];
+
+    const PRODUCT_TABLE = {
+      0:  { name: '鐵壁攔死 Stuff Block！', type: 'out', badge: '0：ドシャット' },
+      1:  { name: '攔網觸球 One-Touch（重打）', type: 'foul', badge: '1：ワンタッチ' },
+      2:  { name: '自由球員救起反擊', type: 'ground2', badge: '2：ディグ反撃' },
+      3:  { name: '前排接起封鎖反擊', type: 'ground3', badge: '3：レシーブ反撃' },
+      4:  { name: '托球過高網前被抓出局', type: 'if_fly', badge: '4：ネット際アウト' },
+      5:  { name: '幸運擦網球落地 Net-In！', type: 'infield_hit', badge: '⑤：ネットイン' },
+      6:  { name: '強扣被正面攔回出局', type: 'liner', badge: '6：正面ブロック' },
+      8:  { name: '心臟地帶巧妙落點吊球！', type: 'of_single', badge: '⑧：絶妙フェイント' },
+      9:  { name: '高打點平推球（可打手出界）', type: 'cf_fly', badge: '9：ブロックアウト狙い' },
+      10: { name: '右翼邊線直線突破扣殺！', type: 'of_single', badge: '⑩：ストレート突破' },
+      12: { name: '中央攔網間隙突破扣殺！', type: 'of_single', badge: '⑫：センター突破' },
+      15: { name: '左翼大斜線突破扣殺！', type: 'of_single', badge: '⑮：クロス突破' },
+      16: { name: '深遠邊線擦手高飛球', type: 'rf_deep_fly', badge: '16：奥ワンタッチ' },
+      18: { name: '右翼壓線強勁長打（推進2格）！', type: 'double', badge: '⑱：右ライン際強打' },
+      20: { name: '左翼壓線強勁長打（推進2格）！', type: 'double', badge: '⑳：左ライン際強打' },
+      24: { name: '撕裂防線爆裂斜線（①號位也得分）！', type: 'deep_double', badge: '㉔：超インナー強打' },
+      25: { name: '後排飛翔重扣 Back Attack！！', type: 'triple', badge: '㉕：バックアタック' },
+      30: { name: '釘地板垂直必殺重扣！！！', type: 'homerun', badge: '㉚：バキィッ垂直強打' },
+      36: { name: '彈上看台王牌神級扣殺！！！', type: 'homerun', badge: '㊱：観客席飛び込み決定打' }
+    };
+
+    const RUNNER_STATE_INFO = [
+      { code: '◇0', label: '◇0 修正球態勢', b1: false, b2: false, b3: false, hint: '場上尚無戰術標記。此時若打出「時間差偷襲卡」，效果等同於「觀察軟吊」。' },
+      { code: '◇1', label: '◇1 ①一傳到位', b1: true, b2: false, b3: false, hint: '結果 2・3 為連續封鎖雙殺；二失誤時全員積極起跑；結果 24 ①號位標記直接得分。' },
+      { code: '◇2', label: '◇2 ②二傳就位', b1: false, b2: true, b3: false, hint: '結果 2 推進至③；結果 16 擦手推進至③；二失誤時擊出突破安打直接得分。' },
+      { code: '◇3', label: '◇3 ③快攻誘餌就位', b1: false, b2: false, b3: true, hint: '結果 9・16 打手出界得分；二次吊球為強迫取分；時間差卡限手牌第5張打出（無效棄牌）。' },
+      { code: '◇4', label: '◇4 ①②連線就位', b1: true, b2: true, b3: false, hint: '結果 2・3 雙殺（無失誤時變二失誤◇3）；結果 16 ②號位推進上③變◇5。' },
+      { code: '◇5', label: '◇5 ①③前後就位', b1: true, b2: false, b3: true, hint: '無失誤結果 2・3 時，防守方可選「抓雙殺讓對手得1分」或「死守第3區變一失誤◇4」。' },
+      { code: '◇6', label: '◇6 ②③網前雙點就位', b1: false, b2: true, b3: true, hint: '結果 9 ③得分變◇2；結果 16 ③得分且②推進上③變◇3；時間差卡限第5張打出。' },
+      { code: '◇7', label: '◇7 全員同步助跑', b1: true, b2: true, b3: true, hint: '無失誤 2・3 雙殺變二失誤◇6；打手出界得分 9 變◇4、16 變◇5；時間差卡限第5張打出。' }
+    ];
+
+    let soundEnabled = true;
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+    let toastTimer = null;
+
+    function showToast(msg) {
+      const banner = document.getElementById('toast-banner');
+      const textEl = document.getElementById('toast-text');
+      textEl.textContent = msg;
+      banner.classList.remove('hidden');
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        banner.classList.add('hidden');
+      }, 3400);
+    }
+
+    function playSfx(type) {
+      if (!soundEnabled) return;
+      try {
+        if (!audioCtx) audioCtx = new AudioCtx();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        if (type === 'card') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(540, now);
+          osc.frequency.exponentialRampToValueAtTime(820, now + 0.08);
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
+          osc.start(now);
+          osc.stop(now + 0.08);
+        } else if (type === 'hit') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(300, now);
+          osc.frequency.exponentialRampToValueAtTime(920, now + 0.18);
+          gain.gain.setValueAtTime(0.28, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+          osc.start(now);
+          osc.stop(now + 0.2);
+        } else if (type === 'homerun') {
+          const notes = [523.25, 659.25, 783.99, 1046.5];
+          notes.forEach((freq, idx) => {
+            const o = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            o.type = 'triangle';
+            o.connect(g);
+            g.connect(audioCtx.destination);
+            o.frequency.setValueAtTime(freq, now + idx * 0.09);
+            g.gain.setValueAtTime(0.22, now + idx * 0.09);
+            g.gain.linearRampToValueAtTime(0.01, now + idx * 0.09 + 0.22);
+            o.start(now + idx * 0.09);
+            o.stop(now + idx * 0.09 + 0.22);
+          });
+        } else if (type === 'out') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(280, now);
+          osc.frequency.linearRampToValueAtTime(140, now + 0.22);
+          gain.gain.setValueAtTime(0.16, now);
+          gain.gain.linearRampToValueAtTime(0.01, now + 0.22);
+          osc.start(now);
+          osc.stop(now + 0.22);
+        }
+      } catch (e) {
+        // Ignore audio context restriction errors
+      }
+    }
+
+    function toggleSound() {
+      soundEnabled = !soundEnabled;
+      document.getElementById('sound-btn').textContent = soundEnabled ? '🔊' : '🔇';
+    }
+
+    let gameConfig = {
+      format: '1v1',     // '1v1' (王牌單挑) or '2v2' (雙打搭檔)
+      mode: '1p',        // '1p' (vs AI) or '2p' (同機對戰)
+      playerTeam: 'cat'  // 'cat' (先攻) or 'dog' (後攻)
+    };
+
+    let state = {
+      inning: 1,
+      maxInnings: 3,
+      isTop: true,       // true: 肉球喵進攻, false: 柴犬汪進攻
+      outs: 0,
+      b1: false,
+      b2: false,
+      b3: false,
+      scores: {
+        away: [0, 0, 0, 0],
+        home: [0, 0, 0, 0]
+      },
+      pitcherDeck: [],
+      batterDeck: [],
+      pitcherHand: [],
+      batterHand: [],
+      // 2v2 搭檔支援卡與主戰卡
+      liberoAssistCard: null,
+      setterAssistCard: null,
+      selectedPitcherCard: null,
+      selectedBatterCard: null,
+      phase: 'SELECT_PITCHER',
+      shieldLocked: false
+    };
+
+    function shuffle(array) {
+      const arr = [...array];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function getRunnerCodeIndex(b1, b2, b3) {
+      if (!b1 && !b2 && !b3) return 0;
+      if (b1 && !b2 && !b3)  return 1;
+      if (!b1 && b2 && !b3)  return 2;
+      if (!b1 && !b2 && b3)  return 3;
+      if (b1 && b2 && !b3)   return 4;
+      if (b1 && !b2 && b3)   return 5;
+      if (!b1 && b2 && b3)   return 6;
+      return 7;
+    }
+
+    function setBasesByCode(codeIdx) {
+      const info = RUNNER_STATE_INFO[codeIdx];
+      state.b1 = info.b1;
+      state.b2 = info.b2;
+      state.b3 = info.b3;
+    }
+
+    function addRuns(runs) {
+      if (runs <= 0) return;
+      const idx = Math.min(state.inning - 1, 3);
+      if (state.isTop) {
+        state.scores.away[idx] += runs;
+      } else {
+        state.scores.home[idx] += runs;
+      }
+    }
+
+    function selectFormat(fmt) {
+      gameConfig.format = fmt;
+      document.getElementById('format-1v1-btn').className = fmt === '1v1'
+        ? 'p-3 rounded-2xl border-2 border-orange-500 bg-orange-50 text-orange-950 font-black text-xs text-left'
+        : 'p-3 rounded-2xl border-2 border-slate-200 bg-white text-slate-600 font-black text-xs text-left';
+      document.getElementById('format-2v2-btn').className = fmt === '2v2'
+        ? 'p-3 rounded-2xl border-2 border-indigo-500 bg-indigo-50 text-indigo-950 font-black text-xs text-left'
+        : 'p-3 rounded-2xl border-2 border-slate-200 bg-white text-slate-600 font-black text-xs text-left';
+    }
+
+    function selectMode(mode) {
+      gameConfig.mode = mode;
+      document.getElementById('mode-1p-btn').className = mode === '1p'
+        ? 'p-2.5 rounded-2xl border-2 border-pink-500 bg-pink-50 text-pink-900 font-black text-xs text-center'
+        : 'p-2.5 rounded-2xl border-2 border-slate-200 bg-white text-slate-600 font-black text-xs text-center';
+      document.getElementById('mode-2p-btn').className = mode === '2p'
+        ? 'p-2.5 rounded-2xl border-2 border-pink-500 bg-pink-50 text-pink-900 font-black text-xs text-center'
+        : 'p-2.5 rounded-2xl border-2 border-slate-200 bg-white text-slate-600 font-black text-xs text-center';
+      document.getElementById('team-select-group').style.display = mode === '1p' ? 'block' : 'none';
+    }
+
+    function selectPlayerTeam(team) {
+      gameConfig.playerTeam = team;
+      document.getElementById('team-cat-btn').className = team === 'cat'
+        ? 'p-2.5 rounded-2xl border-2 border-amber-500 bg-amber-50 text-amber-900 font-black text-xs text-center'
+        : 'p-2.5 rounded-2xl border-2 border-slate-200 bg-white text-slate-600 font-black text-xs text-center';
+      document.getElementById('team-dog-btn').className = team === 'dog'
+        ? 'p-2.5 rounded-2xl border-2 border-amber-500 bg-amber-50 text-amber-900 font-black text-xs text-center'
+        : 'p-2.5 rounded-2xl border-2 border-slate-200 bg-white text-slate-600 font-black text-xs text-center';
+    }
+
+    function openSetupModal() {
+      document.getElementById('setup-modal-title').textContent = '萌寵排球：網前決戰';
+      document.getElementById('setup-modal-subtitle').textContent = '支援「1對1 王牌單挑」與「2對2 雙打搭檔（舉球×扣殺 vs 攔網×自由）」';
+      document.getElementById('tie-breaker-actions').classList.add('hidden');
+      document.getElementById('setup-modal').classList.remove('hidden');
+    }
+
+    function toggleRefModal() {
+      document.getElementById('ref-modal').classList.toggle('hidden');
+    }
+
+    function startNewGame() {
+      document.getElementById('setup-modal').classList.add('hidden');
+      state.inning = 1;
+      state.maxInnings = 3;
+      state.isTop = true;
+      state.scores = { away: [0, 0, 0, 0], home: [0, 0, 0, 0] };
+      document.getElementById('th-inn-4').classList.add('hidden');
+      document.getElementById('score-away-4').classList.add('hidden');
+      document.getElementById('score-home-4').classList.add('hidden');
+
+      document.getElementById('header-mode-pill').textContent = gameConfig.format === '2v2' ? '🤝 2v2 雙打搭檔' : '⚡ 1v1 王牌單挑';
+      document.getElementById('synergy-status-bar').classList.toggle('hidden', gameConfig.format !== '2v2');
+
+      initHalfInning();
+    }
+
+    function getHandSize() {
+      // 1v1 模式每次抽 5 張；2v2 雙打模式每次需要出 2 張（支援+主戰），因此抽 6 張（打 3 波補牌）
+      return gameConfig.format === '2v2' ? 6 : 5;
+    }
+
+    function initHalfInning() {
+      state.outs = 0;
+      state.b1 = false;
+      state.b2 = false;
+      state.b3 = false;
+      const drawCount = getHandSize();
+      state.pitcherDeck = shuffle(PITCHER_DECK_TEMPLATE);
+      state.batterDeck = shuffle(BATTER_DECK_TEMPLATE);
+      state.pitcherHand = state.pitcherDeck.splice(0, drawCount);
+      state.batterHand = state.batterDeck.splice(0, drawCount);
+      prepareNextPitch();
+    }
+
+    function replenishHandsIfNeeded() {
+      const minRequired = gameConfig.format === '2v2' ? 2 : 1;
+      const drawCount = getHandSize();
+      if (state.pitcherHand.length < minRequired && state.batterHand.length < minRequired) {
+        if (state.pitcherDeck.length < drawCount) {
+          state.pitcherDeck = shuffle(PITCHER_DECK_TEMPLATE);
+        }
+        if (state.batterDeck.length < drawCount) {
+          state.batterDeck = shuffle(BATTER_DECK_TEMPLATE);
+        }
+        state.pitcherHand = state.pitcherDeck.splice(0, drawCount);
+        state.batterHand = state.batterDeck.splice(0, drawCount);
+        showToast(`雙方手牌已用完！同時從山札補充 ${drawCount} 張新卡牌！`);
+        setCommentary(`🔄 雙方手牌用完！攻守雙方同時從山札補滿 ${drawCount} 張新卡牌！`);
+      }
+    }
+
+    function prepareNextPitch() {
+      replenishHandsIfNeeded();
+      state.liberoAssistCard = null;
+      state.setterAssistCard = null;
+      state.selectedPitcherCard = null;
+      state.selectedBatterCard = null;
+      document.getElementById('formula-box').classList.add('hidden');
+      document.getElementById('defense-choice-panel').classList.add('hidden');
+      document.getElementById('next-step-btn').classList.add('hidden');
+
+      const defenseSpecies = state.isTop ? 'dog' : 'cat';
+
+      if (gameConfig.mode === '1p') {
+        if (gameConfig.playerTeam === defenseSpecies) {
+          // 玩家是防守方，AI 是進攻方
+          if (gameConfig.format === '2v2') {
+            state.setterAssistCard = chooseAiPitcherOrBatterAssist('batter');
+            state.selectedBatterCard = chooseAiBatterCard();
+            state.phase = 'SELECT_LIBERO';
+          } else {
+            state.selectedBatterCard = chooseAiBatterCard();
+            state.phase = 'SELECT_PITCHER';
+          }
+        } else {
+          // 玩家是進攻方，AI 是防守方
+          if (gameConfig.format === '2v2') {
+            state.liberoAssistCard = chooseAiPitcherOrBatterAssist('pitcher');
+            state.selectedPitcherCard = chooseAiPitcherCard();
+            state.phase = 'SELECT_SETTER';
+          } else {
+            state.selectedPitcherCard = chooseAiPitcherCard();
+            state.phase = 'SELECT_BATTER';
+          }
+        }
+        state.shieldLocked = false;
+      } else {
+        // 雙人／四人同機模式
+        state.phase = gameConfig.format === '2v2' ? 'SELECT_LIBERO' : 'SELECT_PITCHER';
+        state.shieldLocked = true;
+      }
+
+      renderAll();
+    }
+
+    function chooseAiPitcherOrBatterAssist(role) {
+      const hand = role === 'pitcher' ? state.pitcherHand : state.batterHand;
+      const idx = Math.floor(Math.random() * hand.length);
+      return hand.splice(idx, 1)[0];
+    }
+
+    function chooseAiPitcherCard() {
+      const idx = Math.floor(Math.random() * state.pitcherHand.length);
+      return state.pitcherHand.splice(idx, 1)[0];
+    }
+
+    function chooseAiBatterCard() {
+      const code = getRunnerCodeIndex(state.b1, state.b2, state.b3);
+      const isLastCard = state.batterHand.length === 1;
+      const validCards = state.batterHand.filter(c => {
+        if (c.category === 'steal' && [3, 6, 7].includes(code) && !isLastCard) return false;
+        return true;
+      });
+      const chosen = validCards[Math.floor(Math.random() * validCards.length)] || state.batterHand[0];
+      const realIdx = state.batterHand.findIndex(c => c.id === chosen.id);
+      return state.batterHand.splice(realIdx, 1)[0];
+    }
+
+    // 計算 2v2 搭檔支援卡提供的協同效果描述
+    function getSetterSynergyInfo(card) {
+      if (!card) return { type: 'none', label: '尚未選擇配球' };
+      if (card.category === 'swing' && card.sMult >= 4) {
+        return { type: 'quick_boost', label: `⚡ 速攻托球（${card.title}：安打額外推進1格）` };
+      }
+      if (card.category === 'swing' && card.bMult >= 4) {
+        return { type: 'open_boost', label: `🌙 高吊修正托球（${card.title}：長攻倍率+1）` };
+      }
+      if (card.category === 'take') {
+        return { type: 'feint_cover', label: `👁️ 視野掩護（${card.title}：遇退守陷阱改為保送推進）` };
+      }
+      return { type: 'tactic_boost', label: `🔥 奇襲掩護（${card.title}：快攻與長攻倍率各+1）` };
+    }
+
+    function getLiberoSynergyInfo(card) {
+      if (!card) return { type: 'none', label: '尚未選擇協防' };
+      if (card.category === 'ball') {
+        return { type: 'dig_wall', label: `🧤 完美飛撲 Dig（${card.title}：擦網球5直接接殺出局）` };
+      }
+      if (card.category === 'strike') {
+        return { type: 'double_block', pitchType: card.pitchType, label: `🧱 雙人攔網跟進（同向攔網數值-1 強化封鎖）` };
+      }
+      return { type: 'alert_guard', label: `⚡ 後場警戒（${card.title}：識破時間差偷襲）` };
+    }
+
+    function onSelectHandCard(cardIndex) {
+      const code = getRunnerCodeIndex(state.b1, state.b2, state.b3);
+
+      // 2v2 階段 1：自由球員選協防卡
+      if (state.phase === 'SELECT_LIBERO') {
+        const card = state.pitcherHand[cardIndex];
+        if (!card) return;
+        playSfx('card');
+        state.liberoAssistCard = state.pitcherHand.splice(cardIndex, 1)[0];
+        state.phase = 'SELECT_PITCHER';
+        renderAll();
+        return;
+      }
+
+      // 防守方主戰卡：攔網手選牌
+      if (state.phase === 'SELECT_PITCHER') {
+        const card = state.pitcherHand[cardIndex];
+        if (!card) return;
+        playSfx('card');
+        state.selectedPitcherCard = state.pitcherHand.splice(cardIndex, 1)[0];
+
+        if (gameConfig.mode === '2p') {
+          state.phase = gameConfig.format === '2v2' ? 'SELECT_SETTER' : 'SELECT_BATTER';
+          state.shieldLocked = true;
+          renderAll();
+          return;
+        }
+      }
+
+      // 2v2 階段 3：舉球員選配球卡
+      if (state.phase === 'SELECT_SETTER') {
+        const card = state.batterHand[cardIndex];
+        if (!card) return;
+        playSfx('card');
+        state.setterAssistCard = state.batterHand.splice(cardIndex, 1)[0];
+        state.phase = 'SELECT_BATTER';
+        renderAll();
+        return;
+      }
+
+      // 進攻方主戰卡：主攻手選牌
+      if (state.phase === 'SELECT_BATTER') {
+        const card = state.batterHand[cardIndex];
+        if (!card) return;
+        const isLastCard = state.batterHand.length === 1;
+        if (card.category === 'steal' && [3, 6, 7].includes(code) && !isLastCard) {
+          showToast('依說明書特別規則：在 ◇3、◇6、◇7 情況下不能使用時間差偷襲卡（僅在手牌最後 1 張時可打出）！');
+          return;
+        }
+        playSfx('card');
+        state.selectedBatterCard = state.batterHand.splice(cardIndex, 1)[0];
+      }
+
+      if (state.selectedPitcherCard && state.selectedBatterCard) {
+        state.phase = 'REVEAL';
+        evaluateMatchup(state.selectedPitcherCard, state.selectedBatterCard);
+      }
+    }
+
+    function evaluateMatchup(pCard, bCard) {
+      const code = getRunnerCodeIndex(state.b1, state.b2, state.b3);
+      const isFifthCard = state.batterHand.length === 0;
+      const setterSyn = gameConfig.format === '2v2' ? getSetterSynergyInfo(state.setterAssistCard) : { type: 'none' };
+      const liberoSyn = gameConfig.format === '2v2' ? getLiberoSynergyInfo(state.liberoAssistCard) : { type: 'none' };
+
+      let formulaText = '';
+      let headline = '';
+      let detail = '';
+      let sfxType = 'card';
+
+      // 1. 觸網犯規 (原ボーク Balk)
+      if (pCard.category === 'balk') {
+        headline = '⚠️ 攔網觸網犯規（ネットタッチ）！';
+        if (code === 0) {
+          state.b1 = true;
+          detail = '無標記（◇0）時防守方觸網犯規，進攻方免費站上 ①一傳到位區！';
+        } else {
+          const runs = advanceAllRunnersOneBase();
+          detail = `場上有戰術標記時觸網犯規，所有標記推進 1 格${runs ? `（攻下 ${runs} 分）` : ''}！`;
+        }
+        sfxType = 'hit';
+        finishPitchResolution(formulaText, headline, detail, sfxType);
+        return;
+      }
+
+      // 2. 假跳牽制 (原牽制球)
+      if (pCard.category === 'pickoff') {
+        if (bCard.category === 'steal' || bCard.category === 'hitrun') {
+          if (code === 0) {
+            headline = '🏐 假跳牽制 × 奇襲空轉';
+            detail = '場上無戰術標記，雙方卡牌棄置，重新選牌對決。';
+          } else {
+            state.outs += 1;
+            removeLeadRunner();
+            headline = '💥 奇襲被識破出局！（先頭標記アウト）';
+            detail = '進攻方發動時間差／同步進攻，遭攔網手眼神與假跳完全識破，最前位標記出局！';
+            sfxType = 'out';
+          }
+        } else {
+          headline = '🔄 攔網手假跳牽制！';
+          detail = '防守卡與進攻卡皆棄置，雙方從剩餘手牌重新選擇對決。';
+        }
+        finishPitchResolution(formulaText, headline, detail, sfxType);
+        return;
+      }
+
+      // 3. 進攻方：觀察空檔軟吊 (原見送り)
+      if (bCard.category === 'take') {
+        if (pCard.category === 'strike') {
+          state.outs += 1;
+          headline = '⚡ 網前吊球被直接壓死！（見逃し三振）';
+          detail = `防守方貼網攔截「${pCard.title}」，軟吊球過網即被攔網手單掌壓回場內出局！`;
+          sfxType = 'out';
+        } else {
+          const runs = applyWalk();
+          headline = '✨ 空檔軟吊落地！（四球推進）';
+          detail = `看穿對手後排退守，輕巧將球吊入網前無人區，推進標記上 ①號位${runs ? '（滿場擠回 1 分！）' : ''}！`;
+          sfxType = 'hit';
+        }
+        finishPitchResolution(formulaText, headline, detail, sfxType);
+        return;
+      }
+
+      // 4. 進攻方：背後時間差偷襲 (原盗塁)
+      if (bCard.category === 'steal') {
+        if ([3, 6, 7].includes(code) && isFifthCard) {
+          headline = '🛡️ 時間差特別規則（無效棄牌）';
+          detail = '於 ◇3/◇6/◇7 局面打出最後 1 張時間差偷襲卡，依規則雙方卡牌視為無效棄牌！';
+          finishPitchResolution(formulaText, headline, detail, 'card');
+          return;
+        }
+        if (liberoSyn.type === 'alert_guard' && code > 0) {
+          state.outs += 1;
+          removeLeadRunner();
+          headline = '🧤 2v2 自由球員警戒識破時間差！';
+          detail = '雙打自由球員提前指揮防線，直接抓到時間差跑動的最前位標記出局！';
+          finishPitchResolution('2v2 自由球員警戒加成', headline, detail, 'out');
+          return;
+        }
+        if (pCard.category === 'strike') {
+          state.outs += 1;
+          sfxType = 'out';
+          if (code === 0) {
+            headline = '⚡ 吊球被壓死出局！（◇0 時間差視同軟吊）';
+            detail = '無標記時打出時間差卡等同觀察軟吊，遭貼網攔截出局！';
+          } else {
+            advanceExistingRunnersSteal();
+            headline = '💨 時間差掩護推進成功 ＆ 誘餌出局！';
+            detail = state.outs >= 3
+              ? '累計第 3 次失誤出局，換發球權攻守交換！'
+              : '第一波誘餌雖被封阻（+1失誤），但場上戰術標記成功推進 1 格！';
+          }
+        } else {
+          if (code === 2) {
+            state.outs += 1;
+            state.b2 = false;
+            state.b1 = true;
+            headline = '😮 軟吊上①號位 ＋ ②號位跑動失誤出局！';
+            detail = '依規則 ◇2 時退守配時間差：打者推進上①號位，但原②號位標記配球失誤出局！';
+            sfxType = 'out';
+          } else {
+            const runs = applyWalk();
+            headline = '✨ 空檔推進成功！（四球）';
+            detail = `防守方後排退守，時間差輕吊落入空檔推進標記${runs ? '（擠回 1 分）' : ''}！`;
+            sfxType = 'hit';
+          }
+        }
+        finishPitchResolution(formulaText, headline, detail, sfxType);
+        return;
+      }
+
+      // 5. 進攻方：舉球員二次吊球奇襲 (原バント)
+      if (bCard.category === 'bunt') {
+        if (pCard.category === 'ball') {
+          if ([0, 1, 2, 4].includes(code)) {
+            applyWalk();
+            headline = '✨ 二次吊球落入空檔！（保送推進）';
+            detail = '防守方後排退守（◇0/◇1/◇2/◇4），舉球員順勢輕推空檔成功推進！';
+            sfxType = 'hit';
+          } else if ([3, 5, 6].includes(code)) {
+            state.outs += 2;
+            state.b3 = false;
+            headline = '💥 強迫取分奇襲失敗雙殺！（Wプレイ）';
+            detail = '防守方退守識破二次吊球！主攻與③號位誘餌同時失去節奏形成雙殺出局！';
+            sfxType = 'out';
+          } else if (code === 7) {
+            applyWalk();
+            headline = '🎉 全員同步二次吊球擠回 1 分！';
+            detail = '◇7 滿場態勢下看穿退守，二次吊球直接奪下寶貴的 1 分！';
+            sfxType = 'homerun';
+          }
+          finishPitchResolution(formulaText, headline, detail, sfxType);
+          return;
+        } else {
+          const prod = pCard.val * 1;
+          formulaText = `${pCard.pitchType === 'straight' ? '快攻攔網' : '長攻攔網'} ${pCard.val} × 二次吊球 1 ＝ ${prod}`;
+          if (code === 0) {
+            if (prod === 5) {
+              state.b1 = true;
+              headline = '🐾 奇襲擦網落地安打！（判定 5）';
+              detail = '無標記時二次吊球擦網落入前場，成功站上 ①號位！';
+              sfxType = 'hit';
+            } else {
+              state.outs += 1;
+              headline = '🏐 二次吊球被救起反擊出局';
+              detail = `乘積為 ${prod}，無標記時除 5 以外皆為二次吊球出局。`;
+              sfxType = 'out';
+            }
+          } else if ([1, 2, 4].includes(code)) {
+            if (prod === 2 || prod === 3) {
+              state.outs += 1;
+              if (state.outs < 3) {
+                if (code === 1) { state.b1 = false; state.b2 = true; }
+                else if (code === 2) { state.b2 = false; state.b3 = true; }
+                else if (code === 4) { state.b1 = false; state.b2 = true; state.b3 = true; }
+              }
+              headline = '👏 二傳掩護推進成功！（走者進塁）';
+              detail = `乘積為 ${prod}，雖消耗 1 次出局，但成功將場上標記推進至下一區！`;
+              sfxType = 'hit';
+            } else if (prod === 5) {
+              applySingle(true);
+              headline = '🔥 二次吊球變擦網安打！（判定 5）';
+              detail = '吊在絕佳死角落地，所有戰術標記安全推進！';
+              sfxType = 'hit';
+            } else {
+              state.outs += 1;
+              headline = '💥 二次吊球被攔回出局';
+              detail = `乘積為 ${prod}，吊球遭防守方化解出局。`;
+              sfxType = 'out';
+            }
+          } else {
+            if (prod === 2 || prod === 3) {
+              state.outs += 1;
+              if (state.outs < 3) {
+                addRuns(1);
+                state.b3 = state.b2;
+                state.b2 = state.b1;
+                state.b1 = false;
+                headline = '🎉 網前強迫取分成功！（スクイズ得点）';
+                detail = `乘積為 ${prod}！利用③號位誘餌掩護，二次吊球落地奪下 1 分！`;
+                sfxType = 'homerun';
+              } else {
+                headline = '🏐 累計第三失誤換邊';
+                detail = '已滿三失誤出局，本球得分不算。';
+                sfxType = 'out';
+              }
+            } else if (prod === 5) {
+              applySingle(true);
+              headline = '🎉 強迫取分擦網安打！（得 1 分）';
+              detail = '二次吊球幸運擦網落地！得 1 分且全隊繼續進攻！';
+              sfxType = 'homerun';
+            } else if (prod === 6) {
+              state.outs += 2;
+              removeLeadRunner();
+              headline = '💥 正面攔回雙殺！（Wプレイ）';
+              detail = '二次吊球遭編號 6 正面攔回，形成雙殺守備！';
+              sfxType = 'out';
+            } else {
+              state.outs += 1;
+              headline = '💥 強迫取分失敗出局';
+              detail = `乘積為 ${prod}，奇襲失敗出局。`;
+              sfxType = 'out';
+            }
+          }
+          finishPitchResolution(formulaText, headline, detail, sfxType);
+          return;
+        }
+      }
+
+      // 6. 進攻方：全員同步多點進攻 (原ヒットエンドラン)
+      if (bCard.category === 'hitrun') {
+        if (pCard.category === 'ball') {
+          headline = '✋ 攔網觸球重打！（ファール・重新選牌）';
+          detail = '退守配同步進攻：扣球擦過指尖彈出界外被救回，雙方卡牌棄置重選！';
+          finishPitchResolution(formulaText, headline, detail, 'card');
+          return;
+        } else {
+          const prod = pCard.val * 2;
+          formulaText = `${pCard.pitchType === 'straight' ? '快攻攔網' : '長攻攔網'} ${pCard.val} × 同步進攻 2 ＝ ${prod}`;
+          if (prod === 2) {
+            state.outs += 1;
+            if (state.outs < 3 && code > 0) {
+              const runs = advanceAllRunnersOneBase();
+              headline = '🏃 同步掩護強行推進！';
+              detail = `同步進攻效果發動！雖被自由球員救起（+1失誤），但標記成功推進${runs ? '並得 1 分' : ''}！`;
+              sfxType = 'hit';
+            } else {
+              headline = '🏐 被自由球員救起反擊出局';
+              detail = '扣球被救起反擊出局。';
+              sfxType = 'out';
+            }
+            finishPitchResolution(formulaText, headline, detail, sfxType);
+            return;
+          } else if (prod === 6) {
+            if (code > 0) {
+              state.outs += 2;
+              removeLeadRunner();
+              headline = '💥 正面攔回雙殺！（Wプレイ）';
+              detail = '同步進攻撞上編號 6 正面攔網，兩名攻擊手同時被封鎖形成雙殺！';
+            } else {
+              state.outs += 1;
+              headline = '🏐 正面攔回出局';
+              detail = '扣球被正面攔回出局。';
+            }
+            finishPitchResolution(formulaText, headline, detail, 'out');
+            return;
+          } else {
+            resolveProductTable(prod, formulaText, true, setterSyn, liberoSyn);
+            return;
+          }
+        }
+      }
+
+      // 7. 進攻方：強攻扣殺 (原打つ)
+      if (bCard.category === 'swing') {
+        if (pCard.category === 'ball') {
+          // 檢查 2v2 舉球員是否提供「視野掩護 (feint_cover)」
+          if (setterSyn.type === 'feint_cover') {
+            const runs = applyWalk();
+            formulaText = '2v2 舉球員視野掩護發動！';
+            headline = '✨ 2v2 舉球視野掩護！強扣改吊空檔推進！';
+            detail = `防守方原本設下「${pCard.title}」引誘出界，但舉球員提前提醒改吊空檔，成功推進標記${runs ? '（擠回 1 分）' : ''}！`;
+            finishPitchResolution(formulaText, headline, detail, 'hit');
+            return;
+          }
+          state.outs += 1;
+          headline = '🌪️ 扣球出界失誤！（空振り三振）';
+          detail = `防守方採用「${pCard.title}」臨時收手退守，主攻手全力猛扣直接飛出底線失誤出局！`;
+          finishPitchResolution(formulaText, headline, detail, 'out');
+          return;
+        } else {
+          // 計算 2v2 攔網手與舉球員的數值修正
+          let effPitchVal = pCard.val;
+          let bonusNotes = [];
+
+          if (liberoSyn.type === 'double_block' && liberoSyn.pitchType === pCard.pitchType && effPitchVal > 1) {
+            effPitchVal -= 1;
+            bonusNotes.push('雙人攔網-1');
+          }
+
+          let mult = pCard.pitchType === 'straight' ? bCard.sMult : bCard.bMult;
+          if (mult > 0) {
+            if (setterSyn.type === 'open_boost' && pCard.pitchType === 'breaking' && mult < 6) {
+              mult += 1;
+              bonusNotes.push('高吊托球+1');
+            } else if (setterSyn.type === 'tactic_boost' && mult < 6) {
+              mult += 1;
+              bonusNotes.push('奇襲托球+1');
+            }
+          }
+
+          if (effPitchVal === 0 && mult === 0) {
+            const runs = applyWalk();
+            formulaText = `長攻攔網 0 × 扣殺 0 ＝ [0×0] 空網推進`;
+            headline = '[0×0]：攔網手完全猜錯邊！（推進 1 格）';
+            detail = `雙方數值皆為 0（[0×0] 特殊判定），攔網手被騙開，進攻方輕鬆推進上 ①號位${runs ? '（擠回 1 分）' : ''}！`;
+            finishPitchResolution(formulaText, headline, detail, 'hit');
+            return;
+          }
+
+          const prod = effPitchVal * mult;
+          const noteStr = bonusNotes.length ? `（${bonusNotes.join('・')}）` : '';
+          formulaText = `${pCard.pitchType === 'straight' ? '快攻攔網' : '長攻攔網'} ${effPitchVal} × 扣殺 ${mult} ＝ ${prod} ${noteStr}`;
+          resolveProductTable(prod, formulaText, false, setterSyn, liberoSyn);
+          return;
+        }
+      }
+    }
+
+    function resolveProductTable(prod, formulaText, isHitAndRun, setterSyn = { type: 'none' }, liberoSyn = { type: 'none' }) {
+      const outcome = PRODUCT_TABLE[prod] || PRODUCT_TABLE[0];
+      const code = getRunnerCodeIndex(state.b1, state.b2, state.b3);
+      let headline = `${outcome.badge}｜${outcome.name}`;
+      let detail = '';
+      let sfxType = 'card';
+
+      switch (outcome.type) {
+        case 'out':
+          state.outs += 1;
+          detail = '乘積為 0，扣球被網前鐵壁直接攔死（ドシャット）！';
+          sfxType = 'out';
+          break;
+
+        case 'foul':
+          detail = '攔網觸球（ワンタッチ）後被保護救起！本球維持原態勢繼續下一張牌對決！';
+          sfxType = 'card';
+          break;
+
+        case 'if_fly':
+        case 'liner':
+          state.outs += 1;
+          detail = `進攻方遭遇「${outcome.name}」，場上戰術標記無法推進。`;
+          sfxType = 'out';
+          break;
+
+        case 'ground2':
+        case 'ground3': {
+          if (code === 5 && state.outs === 0) {
+            const defenseSpecies = state.isTop ? 'dog' : 'cat';
+            if (gameConfig.mode === '1p' && gameConfig.playerTeam !== defenseSpecies) {
+              state.outs = 1;
+              setBasesByCode(4);
+              headline = `${outcome.badge}｜AI 防守選擇封鎖第 3 區抓出局！`;
+              detail = '無失誤且①③就位（◇5），AI 防守方選擇死守網前封殺③號位，形成一失誤①②就位（◇4）！';
+              finishPitchResolution(formulaText, headline, detail, 'out');
+              return;
+            } else {
+              state.phase = 'DEFENSE_CHOICE';
+              document.getElementById('formula-box').textContent = formulaText;
+              document.getElementById('formula-box').classList.remove('hidden');
+              document.getElementById('defense-choice-panel').classList.remove('hidden');
+              renderAll();
+              return;
+            }
+          }
+
+          if (state.outs === 2) {
+            state.outs = 3;
+            detail = '兩失誤後扣球被自由球員救起反擊，形成第三失誤換邊！';
+            sfxType = 'out';
+            break;
+          }
+
+          if (code === 0) {
+            state.outs += 1;
+            detail = '扣球被後排精彩救起並組織反擊，進攻方 +1 失誤。';
+          } else if (code === 1) {
+            state.outs += 2;
+            setBasesByCode(0);
+            headline = `${outcome.badge}｜連續封鎖雙殺！（Wプレイ）`;
+            detail = '①號位有人時扣球被救起，防守方迅速反擊形成雙殺守備！';
+          } else if (code === 2) {
+            state.outs += 1;
+            if (outcome.type === 'ground2') {
+              setBasesByCode(3);
+              detail = '自由球員救起！主攻雖出局，但②號位戰術標記趁勢推進上③號位（◇3）！';
+            } else {
+              detail = '前排接起反擊！主攻出局，②號位標記無法推進（維持◇2）。';
+            }
+          } else if (code === 3) {
+            state.outs += 1;
+            detail = '扣球被救起，③號位誘餌凍結，進攻方 +1 失誤。';
+          } else if (code === 4) {
+            if (state.outs === 0) {
+              state.outs = 2;
+              setBasesByCode(3);
+              headline = `${outcome.badge}｜連續封鎖雙殺（Wプレイ）！`;
+              detail = '無失誤①②就位時扣球被救起，形成雙殺！原②號位標記推進上③號位（二失誤 ◇3）。';
+            } else {
+              state.outs = 3;
+              headline = `${outcome.badge}｜雙殺守備結束半局！`;
+              detail = '一失誤①②就位時扣球被反擊，雙殺形成三失誤換邊！';
+            }
+          } else if (code === 5) {
+            state.outs = 3;
+            headline = `${outcome.badge}｜雙殺守備結束半局！`;
+            detail = '一失誤①③就位時扣球被反擊，雙殺形成三失誤換邊！';
+          } else if (code === 6) {
+            state.outs += 1;
+            detail = '扣球被救起，②③號位標記凍結，進攻方 +1 失誤。';
+          } else if (code === 7) {
+            if (state.outs === 0) {
+              state.outs = 2;
+              setBasesByCode(6);
+              headline = `${outcome.badge}｜滿場雙殺守備（二失誤 ◇6）！`;
+              detail = '無失誤滿場時扣球被救起反擊，封殺形成雙殺，變為二失誤②③就位（◇6）！';
+            } else {
+              state.outs = 3;
+              headline = `${outcome.badge}｜滿場雙殺結束半局！`;
+              detail = '一失誤滿場時扣球被反擊，雙殺形成三失誤換邊！';
+            }
+          }
+          sfxType = 'out';
+          break;
+        }
+
+        case 'cf_fly': {
+          state.outs += 1;
+          sfxType = 'out';
+          if (state.outs < 3 && [3, 5, 6, 7].includes(code)) {
+            addRuns(1);
+            if (code === 3) setBasesByCode(0);
+            else if (code === 5) setBasesByCode(1);
+            else if (code === 6) setBasesByCode(2);
+            else if (code === 7) setBasesByCode(4);
+            headline = '9：打手出界挑戰成功！（ブロックアウト得点）';
+            detail = '③號位快攻誘餌掩護下，高打點平推球擦過攔網指尖出界，成功攻下 1 分！';
+            sfxType = 'homerun';
+          } else {
+            detail = '高打點平推球被後排穩穩接起出局。';
+          }
+          break;
+        }
+
+        case 'rf_deep_fly': {
+          state.outs += 1;
+          sfxType = 'out';
+          if (state.outs < 3) {
+            if (code === 2) {
+              setBasesByCode(3);
+              detail = '深遠邊線擦手球，②號位標記趁勢推進上③號位（◇3）！';
+            } else if (code === 3) {
+              addRuns(1);
+              setBasesByCode(0);
+              headline = '16：深遠打手出界得分！（得 1 分）';
+              detail = '③號位標記藉深遠擦手球成功攻下 1 分！';
+              sfxType = 'homerun';
+            } else if (code === 4) {
+              setBasesByCode(5);
+              detail = '深遠邊線擦手球，②號位推進上③號位，變成①③就位（◇5）！';
+            } else if (code === 5) {
+              addRuns(1);
+              setBasesByCode(1);
+              headline = '16：深遠打手出界得分！（得 1 分）';
+              detail = '③號位標記得分，維持①號位就位（◇1）！';
+              sfxType = 'homerun';
+            } else if (code === 6) {
+              addRuns(1);
+              setBasesByCode(3);
+              headline = '16：深遠打手出界！（得 1 分＋②上③）';
+              detail = '③號位得分、②號位也同步推進上③號位（◇3）！';
+              sfxType = 'homerun';
+            } else if (code === 7) {
+              addRuns(1);
+              setBasesByCode(5);
+              headline = '16：滿場深遠打手出界！（得 1 分）';
+              detail = '③號位得分、②號位推進上③，變成①③就位（◇5）！';
+              sfxType = 'homerun';
+            } else {
+              detail = '深遠邊線高飛球被救起出局。';
+            }
+          } else {
+            detail = '深遠高飛球被救起，形成三失誤換邊！';
+          }
+          break;
+        }
+
+        case 'infield_hit': {
+          // 檢查 2v2 自由球員「完美飛撲 Dig」是否沒收擦網球(5)
+          if (liberoSyn.type === 'dig_wall') {
+            state.outs += 1;
+            headline = '🧤 2v2 自由球員神級飛撲救起擦網球！';
+            detail = '原本會落地的幸運擦網球（⑤），被後排自由球員單手貼地飛撲救起反擊出局！';
+            sfxType = 'out';
+            break;
+          }
+          const extra = setterSyn.type === 'quick_boost';
+          const runs = extra ? applyOutfieldSingle(true) : applySingle(true);
+          detail = `幸運擦網球落地${extra ? '（2v2 速攻托球額外推進！）' : ''}！戰術標記推進${runs ? `，攻下 ${runs} 分` : ''}！`;
+          sfxType = runs ? 'homerun' : 'hit';
+          break;
+        }
+
+        case 'of_single': {
+          const extraAdvance = isHitAndRun || state.outs === 2 || setterSyn.type === 'quick_boost';
+          const runs = applyOutfieldSingle(extraAdvance);
+          detail = `${setterSyn.type === 'quick_boost' ? '⚡ 2v2 速攻托球聯手加成！' : ''}乾淨俐落突破攔網${runs ? `，攻下 ${runs} 分` : ''}！`;
+          sfxType = runs ? 'homerun' : 'hit';
+          break;
+        }
+
+        case 'double': {
+          const runs = applyDouble(false);
+          detail = `壓線強勁扣殺！一口氣推進 2 格至②號位${runs ? `，打回 ${runs} 分` : ''}！`;
+          sfxType = runs ? 'homerun' : 'hit';
+          break;
+        }
+
+        case 'deep_double': {
+          const runs = applyDouble(true);
+          detail = `撕裂防線的爆裂斜線扣殺！場上所有標記（含①號位）全部得分（+${runs}分）！`;
+          sfxType = 'homerun';
+          break;
+        }
+
+        case 'triple': {
+          let runs = (state.b1 ? 1 : 0) + (state.b2 ? 1 : 0) + (state.b3 ? 1 : 0);
+          addRuns(runs);
+          setBasesByCode(3);
+          detail = `超越攔網指尖的後排飛翔重扣（バックアタック）！清光標記${runs ? `得 ${runs} 分` : ''}並直上③號位！`;
+          sfxType = 'homerun';
+          break;
+        }
+
+        case 'homerun': {
+          let runs = 1 + (state.b1 ? 1 : 0) + (state.b2 ? 1 : 0) + (state.b3 ? 1 : 0);
+          addRuns(runs);
+          setBasesByCode(0);
+          detail = `排球重重釘在地板彈上看台！這是一記連拿 ${runs} 分的必殺王牌扣殺！！！`;
+          sfxType = 'homerun';
+          break;
+        }
+      }
+
+      finishPitchResolution(formulaText, headline, detail, sfxType);
+    }
+
+    function resolveDefenseChoice(choice) {
+      document.getElementById('defense-choice-panel').classList.add('hidden');
+      const formulaText = document.getElementById('formula-box').textContent;
+      if (choice === 'dp') {
+        state.outs = 2;
+        addRuns(1);
+        setBasesByCode(0);
+        finishPitchResolution(
+          formulaText,
+          '✌ 防守選擇抓雙殺（對手得 1 分）',
+          '防守方連續封鎖抓下雙殺（2失誤 ◇0），但對手趁隙吊球攻下 1 分！',
+          'hit'
+        );
+      } else {
+        state.outs = 1;
+        setBasesByCode(4);
+        finishPitchResolution(
+          formulaText,
+          '🛡️ 防守選擇死守第 3 區（0 失分）',
+          '防守方死守網前封殺③號位誘餌！形成一失誤①、②號位就位（◇4）！',
+          'out'
+        );
+      }
+    }
+
+    function applyWalk() {
+      let runs = 0;
+      if (state.b1 && state.b2 && state.b3) {
+        runs = 1;
+        addRuns(1);
+      } else if (state.b1 && state.b2) {
+        state.b3 = true;
+      } else if (state.b1) {
+        state.b2 = true;
+      }
+      state.b1 = true;
+      return runs;
+    }
+
+    function advanceAllRunnersOneBase() {
+      let runs = 0;
+      if (state.b3) { runs += 1; addRuns(1); }
+      state.b3 = state.b2;
+      state.b2 = state.b1;
+      state.b1 = false;
+      return runs;
+    }
+
+    function advanceExistingRunnersSteal() {
+      const code = getRunnerCodeIndex(state.b1, state.b2, state.b3);
+      if (code === 1) setBasesByCode(2);
+      else if (code === 2) setBasesByCode(3);
+      else if (code === 4) setBasesByCode(6);
+      else if (code === 5) setBasesByCode(6);
+    }
+
+    function removeLeadRunner() {
+      if (state.b3) state.b3 = false;
+      else if (state.b2) state.b2 = false;
+      else if (state.b1) state.b1 = false;
+    }
+
+    function applySingle(infieldOnly) {
+      let runs = 0;
+      if (state.b3) runs += 1;
+      if (!infieldOnly && state.outs === 2 && state.b2) {
+        runs += 1;
+        state.b3 = state.b1;
+        state.b2 = false;
+        state.b1 = true;
+      } else {
+        state.b3 = state.b2;
+        state.b2 = state.b1;
+        state.b1 = true;
+      }
+      addRuns(runs);
+      return runs;
+    }
+
+    function applyOutfieldSingle(extraAdvance) {
+      let runs = 0;
+      if (state.b3) runs += 1;
+      if (extraAdvance) {
+        if (state.b2) runs += 1;
+        state.b3 = state.b1;
+        state.b2 = false;
+        state.b1 = true;
+      } else {
+        state.b3 = state.b2;
+        state.b2 = state.b1;
+        state.b1 = true;
+      }
+      addRuns(runs);
+      return runs;
+    }
+
+    function applyDouble(scoreFromFirst) {
+      let runs = 0;
+      if (state.b3) runs += 1;
+      if (state.b2) runs += 1;
+      if (state.b1) {
+        if (scoreFromFirst || state.outs === 2) {
+          runs += 1;
+          state.b3 = false;
+        } else {
+          state.b3 = true;
+        }
+      } else {
+        state.b3 = false;
+      }
+      state.b2 = true;
+      state.b1 = false;
+      addRuns(runs);
+      return runs;
+    }
+
+    function finishPitchResolution(formulaText, headline, detail, sfxType) {
+      playSfx(sfxType);
+      state.phase = 'REVEAL';
+
+      const formulaEl = document.getElementById('formula-box');
+      if (formulaText) {
+        formulaEl.textContent = formulaText;
+        formulaEl.classList.remove('hidden');
+      } else {
+        formulaEl.classList.add('hidden');
+      }
+
+      document.getElementById('result-banner').innerHTML = `
+        <div class="font-black text-rose-600 text-sm md:text-base animate-pop">${headline}</div>
+      `;
+      setCommentary(detail);
+
+      const nextBtn = document.getElementById('next-step-btn');
+      nextBtn.classList.remove('hidden');
+
+      const awayTotal = getTotalScore('away');
+      const homeTotal = getTotalScore('home');
+      if (!state.isTop && state.inning >= state.maxInnings && homeTotal > awayTotal) {
+        nextBtn.textContent = '🏆 比賽結束（再見扣殺勝利）';
+        state.phase = 'GAME_OVER';
+      } else if (state.outs >= 3) {
+        nextBtn.textContent = '🔄 三失誤・換發球權攻守交換 ▶';
+        state.phase = 'INNING_END';
+      } else {
+        nextBtn.textContent = '下一球對決 ▶';
+      }
+
+      renderAll();
+    }
+
+    function handleNextAction() {
+      if (state.phase === 'GAME_OVER') {
+        showGameOverModal();
+        return;
+      }
+      if (state.phase === 'INNING_END') {
+        advanceHalfInning();
+        return;
+      }
+      prepareNextPitch();
+    }
+
+    function advanceHalfInning() {
+      const awayTotal = getTotalScore('away');
+      const homeTotal = getTotalScore('home');
+
+      if (state.isTop) {
+        if (state.inning >= state.maxInnings && homeTotal > awayTotal) {
+          showGameOverModal();
+          return;
+        }
+        state.isTop = false;
+        setCommentary(`📣 進入第 ${state.inning} 局下半！攻守互換牌組並重新抽取手牌！`);
+        initHalfInning();
+      } else {
+        if (state.inning >= state.maxInnings) {
+          showGameOverModal();
+          return;
+        }
+        state.inning += 1;
+        state.isTop = true;
+        setCommentary(`📣 進入第 ${state.inning} 局上半！攻守互換牌組並重新抽取手牌！`);
+        initHalfInning();
+      }
+    }
+
+    function getTotalScore(side) {
+      return state.scores[side].reduce((a, b) => a + b, 0);
+    }
+
+    function showGameOverModal() {
+      const awayTotal = getTotalScore('away');
+      const homeTotal = getTotalScore('home');
+      const modal = document.getElementById('setup-modal');
+      const title = document.getElementById('setup-modal-title');
+      const sub = document.getElementById('setup-modal-subtitle');
+      const tieGroup = document.getElementById('tie-breaker-actions');
+
+      if (awayTotal > homeTotal) {
+        title.textContent = `🏆 🐱 肉球喵高校 獲勝！ (${awayTotal} : ${homeTotal})`;
+        sub.textContent = '恭喜先攻的肉球喵高校贏得這場熱血排球網前決戰！';
+        tieGroup.classList.add('hidden');
+        playSfx('homerun');
+      } else if (homeTotal > awayTotal) {
+        title.textContent = `🏆 🐶 柴犬汪高校 獲勝！ (${homeTotal} : ${awayTotal})`;
+        sub.textContent = '恭喜後攻的柴犬汪高校贏得這場熱血排球網前決戰！';
+        tieGroup.classList.add('hidden');
+        playSfx('homerun');
+      } else {
+        title.textContent = `🤝 3局結束雙方平手！ (${awayTotal} : ${homeTotal})`;
+        sub.textContent = '依說明書規則，平手時由玩家決定要握手言和或進行延長局：';
+        tieGroup.classList.remove('hidden');
+      }
+      modal.classList.remove('hidden');
+    }
+
+    function startExtraInning() {
+      document.getElementById('setup-modal').classList.add('hidden');
+      state.maxInnings += 1;
+      state.inning += 1;
+      state.isTop = true;
+      document.getElementById('th-inn-4').classList.remove('hidden');
+      document.getElementById('score-away-4').classList.remove('hidden');
+      document.getElementById('score-home-4').classList.remove('hidden');
+      setCommentary(`🔥 進入第 ${state.inning} 局延長賽！`);
+      initHalfInning();
+    }
+
+    function declareDraw() {
+      document.getElementById('tie-breaker-actions').classList.add('hidden');
+      document.getElementById('setup-modal-title').textContent = '🤝 雙方握手言和（引き分け）！';
+      document.getElementById('setup-modal-subtitle').textContent = '這是一場勢均力敵的精彩排球好比賽！';
+    }
+
+    function unlockHandView() {
+      state.shieldLocked = false;
+      renderAll();
+    }
+
+    function setCommentary(text) {
+      document.getElementById('live-commentary').textContent = text;
+    }
+
+    function renderCardHtml(card, role, isFaceDown = false) {
+      const offenseSpecies = state.isTop ? 'cat' : 'dog';
+      const defenseSpecies = state.isTop ? 'dog' : 'cat';
+      const species = role === 'pitcher' ? defenseSpecies : offenseSpecies;
+
+      if (isFaceDown) {
+        const bgClass = role === 'pitcher'
+          ? 'from-sky-500 to-indigo-600 border-sky-700'
+          : 'from-orange-400 to-rose-500 border-rose-700';
+        const label = role === 'pitcher' ? '🛡️ 守備カード' : '🏐 攻撃カード';
+        return `
+          <div class="w-40 h-56 rounded-2xl border-4 ${bgClass} bg-gradient-to-br text-white p-3 flex flex-col items-center justify-between shadow-lg animate-pop">
+            <div class="text-xs font-black tracking-widest opacity-90">${label}</div>
+            <div class="w-20 h-20">${getChibiSvg(species, 'normal')}</div>
+            <div class="bg-black/25 px-2.5 py-1 rounded-lg text-[10px] font-black tracking-wider">
+              LAST RALLY
+            </div>
+          </div>
+        `;
+      }
+
+      if (role === 'pitcher') {
+        let badgeColor = 'bg-sky-600 text-white';
+        let badgeText = '快攻攔網';
+        if (card.category === 'strike' && card.pitchType === 'breaking') {
+          badgeColor = 'bg-indigo-600 text-white';
+          badgeText = '長攻攔網';
+        } else if (card.category === 'ball') {
+          badgeColor = 'bg-emerald-600 text-white';
+          badgeText = '退守陷阱';
+        } else if (card.category === 'pickoff') {
+          badgeColor = 'bg-amber-500 text-slate-900';
+          badgeText = '假跳牽制';
+        } else if (card.category === 'balk') {
+          badgeColor = 'bg-purple-600 text-white';
+          badgeText = '觸網犯規';
+        }
+
+        return `
+          <div class="w-full h-56 rounded-2xl border-4 border-sky-400 bg-gradient-to-b from-sky-50 to-white p-2.5 flex flex-col justify-between text-left relative overflow-hidden">
+            <div class="flex items-center justify-between gap-1">
+              <span class="text-[10px] font-black px-2 py-0.5 rounded-full ${badgeColor}">${badgeText}</span>
+              ${card.val !== undefined
+                ? `<span class="w-7 h-7 rounded-xl bg-sky-700 text-white font-black text-base flex items-center justify-center shadow">${card.val}</span>`
+                : `<span class="text-[10px] font-black text-slate-500">${card.speed}</span>`
+              }
+            </div>
+            <div class="my-0.5">
+              <div class="font-black text-slate-800 text-xs leading-tight">${card.title}</div>
+              <div class="text-[10px] font-bold text-slate-400">${card.desc}</div>
+            </div>
+            <div class="w-20 h-20 mx-auto">${getChibiSvg(species, card.pose)}</div>
+            <div class="flex items-center justify-between border-t border-sky-100 pt-1 text-[11px] font-black text-sky-700">
+              <span>${card.speed}</span>
+              <span class="text-slate-400 text-[10px]">${species === 'cat' ? '🐱 喵守備' : '🐶 汪守備'}</span>
+            </div>
+          </div>
+        `;
+      } else {
+        let badgeColor = 'bg-rose-500 text-white';
+        let badgeText = '強攻扣殺';
+        if (card.category === 'take') {
+          badgeColor = 'bg-emerald-600 text-white';
+          badgeText = '觀察軟吊';
+        } else if (card.category === 'bunt') {
+          badgeColor = 'bg-amber-500 text-slate-900';
+          badgeText = '二次吊球';
+        } else if (card.category === 'steal') {
+          badgeColor = 'bg-purple-600 text-white';
+          badgeText = '時間差偷襲';
+        } else if (card.category === 'hitrun') {
+          badgeColor = 'bg-indigo-600 text-white';
+          badgeText = '同步進攻';
+        }
+
+        const statsHtml = card.category === 'swing'
+          ? `<div class="flex gap-1 text-[10px] font-black">
+               <span class="bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded border border-rose-300">快×${card.sMult}</span>
+               <span class="bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-300">長×${card.bMult}</span>
+             </div>`
+          : `<span class="text-[10px] font-black text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded">${card.sub}</span>`;
+
+        return `
+          <div class="w-full h-56 rounded-2xl border-4 border-rose-400 bg-gradient-to-b from-rose-50 to-white p-2.5 flex flex-col justify-between text-left relative overflow-hidden">
+            <div class="flex items-center justify-between gap-1">
+              <span class="text-[10px] font-black px-2 py-0.5 rounded-full ${badgeColor}">${badgeText}</span>
+            </div>
+            <div class="my-0.5">
+              <div class="font-black text-slate-800 text-xs leading-tight">${card.title}</div>
+              <div class="mt-0.5">${statsHtml}</div>
+            </div>
+            <div class="w-20 h-20 mx-auto">${getChibiSvg(species, card.pose)}</div>
+            <div class="text-[10px] font-bold text-slate-500 border-t border-rose-100 pt-1 truncate">
+              ${card.desc}
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    function renderAll() {
+      const offenseSpecies = state.isTop ? 'cat' : 'dog';
+      const defenseSpecies = state.isTop ? 'dog' : 'cat';
+      const offenseName = state.isTop ? '🐱 肉球喵高校' : '🐶 柴犬汪高校';
+      const defenseName = state.isTop ? '🐶 柴犬汪高校' : '🐱 肉球喵高校';
+
+      for (let i = 1; i <= 4; i++) {
+        const awayCell = document.getElementById(`score-away-${i}`);
+        const homeCell = document.getElementById(`score-home-${i}`);
+        if (awayCell) {
+          awayCell.textContent = (i < state.inning || (i === state.inning && state.isTop) || (i === state.inning && !state.isTop))
+            ? state.scores.away[i - 1]
+            : '-';
+        }
+        if (homeCell) {
+          homeCell.textContent = (i < state.inning || (i === state.inning && !state.isTop))
+            ? state.scores.home[i - 1]
+            : '-';
+        }
+      }
+      document.getElementById('score-away-total').textContent = getTotalScore('away');
+      document.getElementById('score-home-total').textContent = getTotalScore('home');
+
+      document.getElementById('inning-badge').textContent = `SET ${state.inning} ${state.isTop ? '上半' : '下半'}`;
+      document.getElementById('matchup-badge').textContent = `攻：${offenseName} ／ 守：${defenseName}`;
+
+      const codeIdx = getRunnerCodeIndex(state.b1, state.b2, state.b3);
+      const rInfo = RUNNER_STATE_INFO[codeIdx];
+      document.getElementById('runner-code-badge').textContent = rInfo.label;
+      document.getElementById('rule-hint-title').textContent = rInfo.label;
+      document.getElementById('rule-hint-body').textContent = rInfo.hint;
+
+      // 場上球員圖示 (1v1 顯示 2 人；2v2 顯示 4 人雙打站位)
+      const is2v2 = gameConfig.format === '2v2';
+      document.getElementById('field-blocker-avatar').innerHTML = getChibiSvg(defenseSpecies, 'fastball', is2v2 ? 'MB 攔網' : '攔網');
+      document.getElementById('field-spiker-avatar').innerHTML = getChibiSvg(offenseSpecies, 'power', is2v2 ? 'WS 主攻' : '主攻');
+
+      const liberoEl = document.getElementById('field-libero-avatar');
+      const setterEl = document.getElementById('field-setter-avatar');
+      if (is2v2) {
+        liberoEl.innerHTML = getChibiSvg(defenseSpecies, 'ball', 'L 自由');
+        setterEl.innerHTML = getChibiSvg(offenseSpecies, 'bunt', 'S 舉球');
+        liberoEl.classList.remove('hidden');
+        setterEl.classList.remove('hidden');
+      } else {
+        liberoEl.classList.add('hidden');
+        setterEl.classList.add('hidden');
+      }
+
+      // 2v2 搭檔加成列更新
+      if (is2v2) {
+        const libSyn = getLiberoSynergyInfo(state.liberoAssistCard);
+        const setSyn = getSetterSynergyInfo(state.setterAssistCard);
+        const showDefSyn = state.phase === 'REVEAL' || state.phase === 'SELECT_PITCHER' || (gameConfig.mode === '1p' && gameConfig.playerTeam === defenseSpecies);
+        const showOffSyn = state.phase === 'REVEAL' || state.phase === 'SELECT_BATTER' || (gameConfig.mode === '1p' && gameConfig.playerTeam === offenseSpecies);
+
+        document.getElementById('def-synergy-text').textContent = state.liberoAssistCard
+          ? (showDefSyn ? libSyn.label : '🧤 已蓋牌就位')
+          : '等待自由球員選牌...';
+        document.getElementById('off-synergy-text').textContent = state.setterAssistCard
+          ? (showOffSyn ? setSyn.label : '✨ 已蓋牌配球')
+          : '等待舉球員配球...';
+      }
+
+      // 戰術踏板標記 (①、②、③)
+      const r1 = document.getElementById('runner-1b');
+      const r2 = document.getElementById('runner-2b');
+      const r3 = document.getElementById('runner-3b');
+      r1.innerHTML = getChibiSvg(offenseSpecies, 'steal', '①到位');
+      r2.innerHTML = getChibiSvg(offenseSpecies, 'bunt', '②組織');
+      r3.innerHTML = getChibiSvg(offenseSpecies, 'power', '③誘餌');
+      r1.classList.toggle('hidden', !state.b1);
+      r2.classList.toggle('hidden', !state.b2);
+      r3.classList.toggle('hidden', !state.b3);
+
+      document.getElementById('out-light-1').className = state.outs >= 1
+        ? 'w-3.5 h-3.5 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e]'
+        : 'w-3.5 h-3.5 rounded-full bg-slate-700 border border-slate-500';
+      document.getElementById('out-light-2').className = state.outs >= 2
+        ? 'w-3.5 h-3.5 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e]'
+        : 'w-3.5 h-3.5 rounded-full bg-slate-700 border border-slate-500';
+
+      document.getElementById('pitcher-deck-count').textContent = state.pitcherDeck.length;
+      document.getElementById('batter-deck-count').textContent = state.batterDeck.length;
+
+      document.getElementById('stage-pitcher-label').textContent = `防守方：${defenseName}`;
+      document.getElementById('stage-batter-label').textContent = `進攻方：${offenseName}`;
+
+      const pSlot = document.getElementById('slot-pitcher-card');
+      const bSlot = document.getElementById('slot-batter-card');
+
+      if (state.phase === 'REVEAL' || state.phase === 'DEFENSE_CHOICE' || state.phase === 'INNING_END' || state.phase === 'GAME_OVER') {
+        pSlot.innerHTML = `<div class="w-40 animate-pop">${renderCardHtml(state.selectedPitcherCard, 'pitcher', false)}</div>`;
+        bSlot.innerHTML = `<div class="w-40 animate-pop">${renderCardHtml(state.selectedBatterCard, 'batter', false)}</div>`;
+        pSlot.className = 'w-40 h-56';
+        bSlot.className = 'w-40 h-56';
+      } else {
+        if (state.selectedPitcherCard) {
+          pSlot.innerHTML = renderCardHtml(state.selectedPitcherCard, 'pitcher', true);
+          pSlot.className = 'w-40 h-56';
+        } else {
+          pSlot.className = 'w-40 h-56 rounded-2xl border-4 border-dashed border-sky-300 bg-sky-50/70 flex flex-col items-center justify-center p-2 text-center shadow-inner';
+          pSlot.innerHTML = `<span class="text-3xl mb-1 opacity-40">🛡️</span><span class="text-xs font-bold text-sky-700/60">等待攔網手出牌</span>`;
+        }
+
+        if (state.selectedBatterCard) {
+          bSlot.innerHTML = renderCardHtml(state.selectedBatterCard, 'batter', true);
+          bSlot.className = 'w-40 h-56';
+        } else {
+          bSlot.className = 'w-40 h-56 rounded-2xl border-4 border-dashed border-rose-300 bg-rose-50/70 flex flex-col items-center justify-center p-2 text-center shadow-inner';
+          bSlot.innerHTML = `<span class="text-3xl mb-1 opacity-40">🏐</span><span class="text-xs font-bold text-rose-700/60">等待主攻手出牌</span>`;
+        }
+        document.getElementById('result-banner').innerHTML = `<span class="text-xs font-bold text-slate-400">雙方蓋牌後同時翻開判定</span>`;
+      }
+
+      const isDefenseTurn = state.phase === 'SELECT_LIBERO' || state.phase === 'SELECT_PITCHER';
+      const isOffenseTurn = state.phase === 'SELECT_SETTER' || state.phase === 'SELECT_BATTER';
+      const activeBadge = document.getElementById('active-hand-badge');
+      const activeTitle = document.getElementById('active-hand-title');
+      const handContainer = document.getElementById('hand-cards-container');
+      const shieldEl = document.getElementById('pass-play-shield');
+
+      const currentHand = isDefenseTurn ? state.pitcherHand : state.batterHand;
+      const currentRole = isDefenseTurn ? 'pitcher' : 'batter';
+
+      document.getElementById('hand-round-info').textContent = `本輪手牌剩餘：${currentHand.length} 張`;
+
+      if (state.phase === 'SELECT_LIBERO') {
+        activeBadge.className = 'bg-teal-600 text-white text-xs font-black px-3 py-1 rounded-full';
+        activeBadge.textContent = `🧤 ${defenseName} 自由球員手牌 (1/2)`;
+        activeTitle.textContent = '【2v2 第1步】請選擇 1 張卡作為「後排自由球員協防加成」';
+        document.getElementById('turn-instruction').textContent = `請選擇自由球員（L）協防卡`;
+      } else if (state.phase === 'SELECT_PITCHER') {
+        activeBadge.className = 'bg-sky-600 text-white text-xs font-black px-3 py-1 rounded-full';
+        activeBadge.textContent = `🛡️ ${defenseName} 攔網手牌 ${is2v2 ? '(2/2)' : ''}`;
+        activeTitle.textContent = is2v2 ? '【2v2 第2步】請選擇 1 張「前排攔網主戰卡」蓋牌' : '請從下方選擇 1 張防守卡蓋牌';
+        document.getElementById('turn-instruction').textContent = `輪到防守方（${defenseName}）選擇攔網卡`;
+      } else if (state.phase === 'SELECT_SETTER') {
+        activeBadge.className = 'bg-amber-500 text-slate-950 text-xs font-black px-3 py-1 rounded-full';
+        activeBadge.textContent = `✨ ${offenseName} 舉球員配球 (1/2)`;
+        activeTitle.textContent = '【2v2 第1步】請選擇 1 張卡作為「舉球員（Setter）托球加成」';
+        document.getElementById('turn-instruction').textContent = `請選擇舉球員（S）托球戰術卡`;
+      } else if (state.phase === 'SELECT_BATTER') {
+        activeBadge.className = 'bg-rose-500 text-white text-xs font-black px-3 py-1 rounded-full';
+        activeBadge.textContent = `🏐 ${offenseName} 主攻手牌 ${is2v2 ? '(2/2)' : ''}`;
+        activeTitle.textContent = is2v2 ? '【2v2 第2步】結合舉球加成，選擇 1 張「主攻扣殺卡」出擊！' : '請預判對手攔網，選擇 1 張進攻卡出擊';
+        document.getElementById('turn-instruction').textContent = `輪到進攻方（${offenseName}）選擇主攻卡`;
+      } else {
+        activeTitle.textContent = '請點擊上方「下一球」按鈕繼續對決';
+        document.getElementById('turn-instruction').textContent = '對決結果判定完成！';
+      }
+
+      if (gameConfig.mode === '2p' && state.shieldLocked && (isDefenseTurn || isOffenseTurn)) {
+        shieldEl.classList.remove('hidden');
+        handContainer.classList.add('hidden');
+        document.getElementById('shield-title').textContent = isDefenseTurn
+          ? `請將畫面交給防守方：${defenseName}`
+          : `請將畫面交給進攻方：${offenseName}`;
+        return;
+      } else {
+        shieldEl.classList.add('hidden');
+        handContainer.classList.remove('hidden');
+      }
+
+      const isLastCard = currentHand.length === 1;
+      handContainer.innerHTML = currentHand.map((card, idx) => {
+        const isStealBlocked = state.phase === 'SELECT_BATTER' && card.category === 'steal' && [3, 6, 7].includes(codeIdx) && !isLastCard;
+        const canClick = (isDefenseTurn || isOffenseTurn);
+        return `
+          <div
+            onclick="${canClick ? `onSelectHandCard(${idx})` : ''}"
+            class="anime-card rounded-2xl cursor-pointer ${(!canClick || isStealBlocked) ? 'disabled-card' : ''}"
+            title="${isStealBlocked ? '◇3、◇6、◇7 時時間差偷襲卡僅能在手牌最後 1 張時打出' : '點擊出牌'}"
+          >
+            ${renderCardHtml(card, currentRole, false)}
+          </div>
+        `;
+      }).join('');
+    }
+
+    window.onload = function () {
+      document.getElementById('modal-cat-icon').innerHTML = getChibiSvg('cat', 'power', 'NYA');
+      document.getElementById('modal-dog-icon').innerHTML = getChibiSvg('dog', 'fastball', 'WAN');
+      startNewGame();
+      openSetupModal();
+    };
+  </script>
+</body>
+</html>
